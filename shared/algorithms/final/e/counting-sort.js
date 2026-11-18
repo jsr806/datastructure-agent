@@ -15,7 +15,7 @@ const SOURCE_LINES = [
 ];
 
 /**
- * 计数排序（稳定版，支持负数，值域保护，符合项目返回契约）
+ * 计数排序（二次复审修复：校验提前 + result契约对齐）
  * @param {{list: number[]}} input
  * @returns {{steps:any[],result:number[]|null,sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
  */
@@ -43,22 +43,22 @@ export function generateCountingSortSteps(input) {
       },
       description,
       done,
-      result: done ? JSON.parse(JSON.stringify(arr)) : null,
+      result: done ? (event === 'error' ? null : JSON.parse(JSON.stringify(arrSnap))) : null,
     });
   }
 
   record('init', 'init', `待排序数组 [${arr.join(',')}]，开始稳定计数排序`);
-  //第一步：先校验全部元素是整数，放在最前面
-if (!arr.every(x => Number.isInteger(x))) {
-  record('error', 'alloc-count', '存在非整数元素，计数排序终止');
-  return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
-}
-//再处理空数组、单元素
-if (n <= 1) {
-  record('sorted', 'done', `数组长度${n}，无需排序：[${arr.join(',')}]`);
-  return { steps, result: [...arr], sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
-}
 
+  //【二次复审】校验放到n<=1提前返回之前
+  if (!arr.every(x => Number.isInteger(x))) {
+    record('error', 'alloc-count', '存在非整数元素，计数排序终止');
+    return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+  }
+
+  if (n <= 1) {
+    record('sorted', 'done', `数组长度${n}，无需排序：[${arr.join(',')}]`);
+    return { steps, result: [...arr], sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+  }
 
   let minv = arr[0];
   let maxv = arr[0];
@@ -72,12 +72,6 @@ if (n <= 1) {
   const range = maxv - minv + 1;
   const MAX_RANGE = 5000;
 
-  // 校验全部元素为整数
-  if (!arr.every(x => Number.isInteger(x))) {
-    record('error', 'alloc-count', '存在非整数元素，计数排序终止');
-    return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
-  }
-  // 校验值域跨度上限
   if (range > MAX_RANGE) {
     record('error','alloc-count',`值域跨度${range}超过最大允许${MAX_RANGE}，终止`);
     return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
@@ -86,17 +80,15 @@ if (n <= 1) {
   const cnt = new Array(range).fill(0);
   record('alloc-count', 'alloc-count', `开辟计数数组，区间长度range=${range}，cnt初始全0`, { cnt:[...cnt], minv, maxv, range });
 
-  // 统计频次
   for (let i = 0; i < n; i++) {
     const idx = arr[i] - minv;
     cnt[idx] += 1;
-    record('count-loop', 'count-loop', `统计 arr[${i}]=${arr[i]}，cnt[${idx}]++ → cnt=[${cnt.join(',')}]`, { cnt:[...cnt] });
+    record('count-loop', 'count-loop', `统计 arr[${i}]=${arr[i]}，cnt[${idx}]++`, { cnt:[...cnt] });
   }
 
-  // 前缀和
   for (let i = 1; i < range; i++) {
     cnt[i] += cnt[i - 1];
-    record('prefix-loop', 'prefix-loop', `计算前缀和 cnt[${i}] += cnt[${i-1}] → cnt=[${cnt.join(',')}]`, { cnt:[...cnt] });
+    record('prefix-loop', 'prefix-loop', `计算前缀和 cnt[${i}] += cnt[${i-1}]`, { cnt:[...cnt] });
   }
 
   const tmp = new Array(n);
@@ -105,10 +97,9 @@ if (n <= 1) {
     const idx = arr[i] - minv;
     const pos = --cnt[idx];
     tmp[pos] = arr[i];
-    record('place-item', 'place-item', `arr[${i}]=${arr[i]}，放到tmp[${pos}], cnt=[${cnt.join(',')}]`, { cnt:[...cnt], tmp:[...tmp] });
+    record('place-item', 'place-item', `arr[${i}]=${arr[i]}，放到tmp[${pos}]`, { cnt:[...cnt], tmp:[...tmp] });
   }
 
-  // 拷贝回原数组
   for (let i = 0; i < n; i++) {
     arr[i] = tmp[i];
   }
@@ -117,3 +108,4 @@ if (n <= 1) {
   record('sorted', 'done', `计数排序完成，结果：[${arr.join(',')}]`);
   return { steps, result: [...arr], sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
 }
+
