@@ -224,27 +224,32 @@ export function generateAvlSteps(input) {
           : `${target} ${direction === 'left' ? '小于' : '大于'} ${cursor.key}，向${direction === 'left' ? '左' : '右'}子树继续。`,
       });
       if (direction === 'equal') {
+        const result = { found: cursor.key, path, root: root.key };
         add({
-          event: 'found', lineId: 'search-end', done: true, variables: view({ phase: 'search', key: target, keyIndex: null, path: [...path], unbalancedAt: null, rotation: null, searchResult: cursor.key }),
+          event: 'found', lineId: 'search-end', done: true, result,
+          variables: view({ phase: 'search', key: target, keyIndex: null, path: [...path], unbalancedAt: null, rotation: null, searchResult: cursor.key }),
           description: `查找路径为 ${path.join(' → ')}，找到 ${target}。`,
         });
-        return { steps, result: { found: cursor.key, path, root: root.key }, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+        return { steps, result, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
       }
       cursor = direction === 'left' ? cursor.left : cursor.right;
     }
+    const result = { found: null, path, root: root?.key ?? null };
     add({
-      event: 'not-found', lineId: 'search-end', done: true, variables: view({ phase: 'search', key: target, keyIndex: null, path: [...path], unbalancedAt: null, rotation: null, searchResult: null }),
+      event: 'not-found', lineId: 'search-end', done: true, result,
+      variables: view({ phase: 'search', key: target, keyIndex: null, path: [...path], unbalancedAt: null, rotation: null, searchResult: null }),
       description: `查找路径为 ${path.join(' → ') || '空树'}，未找到 ${target}。`,
     });
-    return { steps, result: { found: null, path, root: root ? root.key : null }, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+    return { steps, result, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
   }
 
+  const result = snapshot(root);
   add({
-    event: 'done', lineId: 'insert-close', done: true,
-    variables: view({ phase: 'insert', key: null, keyIndex: null, path: [], unbalancedAt: null, rotation: null }),
+    event: 'done', lineId: 'insert-close', done: true, result,
+    variables: { ...result, phase: 'insert', key: null, keyIndex: null, path: [], unbalancedAt: null, rotation: null },
     description: `插入结束，共 ${keys.length} 个键，当前根为 ${root ? root.key : '空'}，每个结点的平衡因子绝对值都不超过 1。`,
   });
-  return { steps, result: { root: root ? root.key : null, nodes: snapshot(root).nodes }, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+  return { steps, result, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
 }
 
 export { SOURCE_VERSION, SOURCE_LINES };

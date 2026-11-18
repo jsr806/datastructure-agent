@@ -247,29 +247,32 @@ export function generateRedBlackSteps(input) {
           : `${target} ${direction === 'left' ? '小于' : '大于'} ${cursor.key}，向${direction === 'left' ? '左' : '右'}继续。`,
       });
       if (direction === 'equal') {
+        const result = { found: cursor.key, path, root: root.key };
         add({
-          event: 'found', lineId: 'search-end', done: true,
+          event: 'found', lineId: 'search-end', done: true, result,
           variables: view({ phase: 'search', key: target, keyIndex: null, path: [...path], z: null, relation: null, fixupCase: null, searchResult: cursor.key }),
           description: `查找路径 ${path.join(' → ')}，找到 ${target}（颜色 ${cursor.red ? '红' : '黑'}）。`,
         });
-        return { steps, result: { found: cursor.key, path, root: root.key }, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+        return { steps, result, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
       }
       cursor = direction === 'left' ? cursor.left : cursor.right;
     }
+    const result = { found: null, path, root: root?.key ?? null };
     add({
-      event: 'not-found', lineId: 'search-end', done: true,
+      event: 'not-found', lineId: 'search-end', done: true, result,
       variables: view({ phase: 'search', key: target, keyIndex: null, path: [...path], z: null, relation: null, fixupCase: null, searchResult: null }),
       description: `查找路径 ${path.join(' → ') || '空树'}，未找到 ${target}，返回 NULL。`,
     });
-    return { steps, result: { found: null, path, root: root ? root.key : null }, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+    return { steps, result, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
   }
 
+  const result = { ...snapshot(root), checked: validateRedBlack(root) };
   add({
-    event: 'done', lineId: 'fixup-end', done: true,
-    variables: view({ phase: 'insert', key: null, keyIndex: null, z: null, relation: null, fixupCase: null }),
+    event: 'done', lineId: 'fixup-end', done: true, result,
+    variables: { ...result, phase: 'insert', key: null, keyIndex: null, z: null, relation: null, fixupCase: null },
     description: `插入结束，根为 ${root ? root.key : '空'}，共 ${keys.length} 个键；根黑、无红红相邻、各路黑高一致。`,
   });
-  return { steps, result: { root: root ? root.key : null, nodes: snapshot(root).nodes, checked: validateRedBlack(root) }, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+  return { steps, result, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
 }
 
 export { SOURCE_VERSION, SOURCE_LINES };

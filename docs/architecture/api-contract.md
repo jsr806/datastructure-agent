@@ -76,6 +76,8 @@ C 包运行标识为 `optimal-merge-tree`、`multiway-merge`、`replacement-sele
 
 运行结果的 `graph` 保存去重后的边和完整顶点列表，包括孤立顶点。各算法共用运行与步骤查询接口。步骤使用引擎原有的 `variables`、`description` 和 `result`。Floyd 距离矩阵的行列按顶点输入顺序排列。拓扑排序检测到环时，运行正常结束，结果为 `Has Cycle`。
 
+Floyd 将边权按共同的十进制精度转换为定点整数，距离矩阵和 `variables.candidateDistance` 使用十进制显示字符串，`∞` 表示不可达。Kruskal 的 `result.selectedEdges`、`variables.selectedEdges` 和 `variables.sortedEdges` 保留边的 `[from, to, weight]` 结构。
+
 自定义数组代码接受 `{language, source, array}`，语言为 `c` 或 `cpp`，代码最多 5000 字符，数组最多 24 个 32 位整数。入口为单个 `void sort(int a[], int n)` 函数，支持初始化的整数变量、数组读写、带花括号的条件和循环。后端检查语法后插入数组访问检查与记录，再调用 `third_party/open-watcom` 下的本机编译器。运行只接受回环连接，支持用 `http://127.0.0.1:3000` 打开。结果共用运行与步骤查询接口，`algorithm` 为 `custom-array`，事件为 `init`、`condition`、`write` 和 `finished`。每步包含原始源码行、数组和 `variables: {line, index, writes}`。数组越界、运算错误或超出执行限制返回 422，编译器缺失返回 503。
 
 ## 题目与判分

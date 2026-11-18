@@ -39,7 +39,7 @@ export function generateSelectionSortSteps(input) {
   for (let i = 0; i < array.length - 1; i++) {
     state.i = i; state.j = -1;
     let minIndex = i; state.minIndex = minIndex;
-    record('init-min', 'init-min', `假设 ${i} 是最小值。`);
+    record('init-min', 'init-min', `先将 A[${i}] = ${array[i]} 作为当前最小值，记下它的下标 ${i}。`);
 
     for (let j = i + 1; j < array.length; j++) {
       state.j = j;

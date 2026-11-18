@@ -1,5 +1,6 @@
-const SOURCE_VERSION = 'heap-c-v3';
+const SOURCE_VERSION = 'heap-c-v4';
 const SOURCE_LINES = [
+  { lineId: 'heapify-declaration', text: 'void heapify(long long a[], int n, int i);' },
   { lineId: 'init', text: 'void heap_sort(long long a[], int n) {' },
   { lineId: 'build-heap', text: '  for (int i = n / 2 - 1; i >= 0; --i)' },
   { lineId: 'heapify-call-1', text: '    heapify(a, n, i);' },

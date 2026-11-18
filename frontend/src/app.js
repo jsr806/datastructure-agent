@@ -155,6 +155,11 @@ function render(state) {
         const [from, to, weight] = value;
         return from + (run.graph.directed ? ' → ' : ' — ') + to + (weight === undefined ? '' : '（' + weight + '）');
       }
+      if (key === 'selectedEdges') {
+        return value.map(([from, to, weight]) =>
+          `${JSON.stringify(from)} — ${JSON.stringify(to)}（${weight}）`,
+        ).join('、') || '空';
+      }
       if (Array.isArray(value)) return value.join('、') || '空';
       if (value && typeof value === 'object') {
         return run.graph.nodes.map(node => node + '：' + (value[node] ?? '—')).join('、');

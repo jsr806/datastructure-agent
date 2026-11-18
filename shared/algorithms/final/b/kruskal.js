@@ -30,16 +30,18 @@ export function generateKruskalSteps(input) {
     const done = event === 'end';
     const isForest = selectedEdges.length < n - 1; 
     const dsuState = dsu.getState();
+    const selected = selectedEdges.map(({ u, v, w }) => [u, v, w]);
     
     steps.push({
       schemaVersion: '1.0', algorithm: 'kruskal', stepIndex: steps.length,
       sourceVersion: SOURCE_VERSION, event, lineId,
       variables: { 
-        sortedEdges: edgeList.map(e => `${e.u}-${e.v}(${e.w})`),
-        selectedEdges: selectedEdges.map(e => `${e.u}-${e.v}(${e.w})`), 
+        sortedEdges: edgeList.map(({ u, v, w }) => [u, v, w]),
+        selectedEdges: selected,
         totalWeight, currentEdge, isForest, parent: dsuState.parent, rank: dsuState.rank 
       },
-      description, done, result: done ? { totalWeight, selectedEdges: selectedEdges.map(e => `${e.u}-${e.v}`), isForest } : null
+      description, done,
+      result: done ? { totalWeight, selectedEdges: selected.map(edge => [...edge]), isForest } : null
     });
   }
 
