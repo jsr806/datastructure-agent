@@ -16,7 +16,7 @@ const SOURCE_LINES = [
 ];
 
 /**
- * LSD基数排序，仅支持非负整数
+ * LSD基数排序，仅支持非负整数；修复record result契约
  * @param {{list: number[]}} input
  * @returns {{steps:any[],result:number[]|null,sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
  */
@@ -44,13 +44,12 @@ export function generateRadixSortSteps(input) {
       },
       description,
       done,
-      result: done ? JSON.parse(JSON.stringify(arr)) : null,
+      result: done ? (event === 'error' ? null : JSON.parse(JSON.stringify(arrSnap))) : null,
     });
   }
 
   record('init', 'init', `待排序数组 [${arr.join(',')}]，开始LSD基数排序`);
 
-  // 校验：全部非负整数
   if(!arr.every(x=> Number.isInteger(x) && x >= 0)){
     record('error','init','基数排序仅支持非负整数输入，终止');
     return { steps, result:null, sourceVersion:SOURCE_VERSION, sourceLines:SOURCE_LINES };
@@ -77,12 +76,12 @@ export function generateRadixSortSteps(input) {
     for (let i = 0; i < n; i++) {
       const digit = Math.floor(arr[i] / exp) % 10;
       cnt[digit]++;
-      record('count-digit', 'count-digit', `arr[${i}]=${arr[i]}，当前位${digit}，cnt[${digit}]++ → cnt=[${cnt.join(',')}]`, { cnt: [...cnt], exp });
+      record('count-digit', 'count-digit', `arr[${i}]=${arr[i]}，当前位${digit}，cnt[${digit}]++`, { cnt: [...cnt], exp });
     }
 
     for (let i = 1; i < 10; i++) {
       cnt[i] += cnt[i - 1];
-      record('prefix', 'prefix', `前缀和 cnt[${i}] += cnt[${i-1}] → cnt=[${cnt.join(',')}]`, { cnt: [...cnt], exp });
+      record('prefix', 'prefix', `前缀和 cnt[${i}] += cnt[${i-1}]`, { cnt: [...cnt], exp });
     }
 
     const tmp = new Array(n);
@@ -91,7 +90,7 @@ export function generateRadixSortSteps(input) {
       const digit = Math.floor(arr[i] / exp) % 10;
       const pos = --cnt[digit];
       tmp[pos] = arr[i];
-      record('place', 'place', `arr[${i}]=${arr[i]} 本位${digit}，放到tmp[${pos}]，cnt=[${cnt.join(',')}]`, { cnt: [...cnt], tmp: [...tmp], exp });
+      record('place', 'place', `arr[${i}]=${arr[i]} 本位${digit}，放到tmp[${pos}]`, { cnt: [...cnt], tmp: [...tmp], exp });
     }
 
     for (let i = 0; i < n; i++) {
