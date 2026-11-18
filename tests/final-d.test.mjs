@@ -292,6 +292,19 @@ test('红黑树：旋转与变色样例，插入后始终满足红黑性质', ()
   }
 });
 
+test('AVL 树和红黑树的末步携带建树、命中及未命中的最终结果', () => {
+  for (const generate of [generateAvlSteps, generateRedBlackSteps]) {
+    for (const input of [{ keys: [] }, { keys: [0, 1] }, { keys: [0], target: 0 }, { keys: [0], target: 1 }]) {
+      const run = generate(input);
+      const terminal = run.steps.at(-1);
+      assert.equal(terminal.done, true);
+      assert.deepEqual(terminal.result, run.result);
+      assert.notStrictEqual(terminal.result, run.result);
+      if (input.target === 0) assert.equal(terminal.result.found, 0);
+    }
+  }
+});
+
 test('快照互相独立：回看早期步骤不会被后续插入污染', () => {
   const run = generateAvlSteps({ keys: [3, 2, 1] });
   const firstInsert = run.steps.find(step => step.event === 'insert');

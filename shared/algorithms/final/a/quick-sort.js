@@ -19,57 +19,57 @@ const SOURCE_LINES = [
 export function generateQuickSortSteps(input) {
   const array = [...input];
   const steps = [];
-  let state = { low: 0, high: 0, i: 0, j: 0, pivot: null };
 
-  function record(event, lineId, description, extra = {}) {
+  function record(event, lineId, description, state) {
     steps.push({
       schemaVersion: '1.0', algorithm: 'quick-sort', stepIndex: steps.length,
       sourceVersion: SOURCE_VERSION, event, lineId, array: [...array],
-      variables: { ...state, ...extra }, description, done: false, result: null,
+      variables: { ...state }, description, done: false, result: null,
     });
   }
 
-  record('init', 'init', '开始快速排序。');
+  record('init', 'init', '开始快速排序。', {
+    low: 0, high: array.length - 1, i: null, j: null, pivot: null,
+  });
 
   function quickSort(low, high) {
-    state.low = low; state.high = high;
     if (low >= high) return;
 
-    let pivot = array[low];
-    state.pivot = pivot;
-    record('init-pivot', 'init-pivot', `选取枢轴 pivot = ${pivot}。`);
+    const pivot = array[low];
+    const state = { low, high, i: null, j: null, pivot };
+    record('init-pivot', 'init-pivot', `选取枢轴 pivot = ${pivot}。`, state);
 
     let i = low, j = high;
     state.i = i; state.j = j;
-    record('init-pointers', 'init-pointers', `初始化双指针。`);
+    record('init-pointers', 'init-pointers', '初始化双指针。', state);
 
     while (i < j) {
       while (i < j && array[j] >= pivot) {
         state.i = i; state.j = j;
-        record('compare-right', 'scan-right', `比较 A[${j}] 和 ${pivot}。`);
+        record('compare-right', 'scan-right', `比较 A[${j}] 和 ${pivot}。`, state);
         j--;
       }
       state.i = i; state.j = j;
       if (i < j) {
-        record('fill-left', 'fill-left', `将 A[${j}] 填到左边。`, { fillFrom: j, fillTo: i });
+        record('fill-left', 'fill-left', `将 A[${j}] 填到左边。`, { ...state, fillFrom: j, fillTo: i });
         array[i] = array[j]; i++; state.i = i;
       }
 
       while (i < j && array[i] <= pivot) {
         state.i = i; state.j = j;
-        record('compare-left', 'scan-left', `比较 A[${i}] 和 ${pivot}。`);
+        record('compare-left', 'scan-left', `比较 A[${i}] 和 ${pivot}。`, state);
         i++;
       }
       state.i = i; state.j = j;
       if (i < j) {
-        record('fill-right', 'fill-right', `将 A[${i}] 填到右边。`, { fillFrom: i, fillTo: j });
+        record('fill-right', 'fill-right', `将 A[${i}] 填到右边。`, { ...state, fillFrom: i, fillTo: j });
         array[j] = array[i]; j--; state.j = j;
       }
     }
 
     array[i] = pivot;
     state.i = i; state.j = j;
-    record('place-pivot', 'place-pivot', `枢轴 ${pivot} 归位。`);
+    record('place-pivot', 'place-pivot', `枢轴 ${pivot} 归位。`, state);
 
     quickSort(low, i - 1); quickSort(i + 1, high);
   }

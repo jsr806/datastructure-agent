@@ -64,8 +64,9 @@ export function describeGraphStep(run, step) {
         const matrix = event === 'update' ? previous.matrix : state.matrix;
         const distance = (from, to) => matrix[nodes.indexOf(from)].split(', ')[nodes.indexOf(to)];
         const left = distance(i, k), right = distance(k, j), old = distance(i, j);
+        const candidate = state.candidateDistance ?? (Number(left) + Number(right));
         detail = left === '∞' || right === '∞' ? '至少有一段不可达，不能经 ' + k + ' 从 ' + i + ' 到 ' + j + '。'
-          : '经 ' + k + ' 的候选距离为 ' + left + ' + ' + right + ' = ' + (Number(left) + Number(right)) +
+          : '经 ' + k + ' 的候选距离为 ' + left + ' + ' + right + ' = ' + candidate +
             '，原距离为 ' + old + '。' + (event === 'update' ? '候选更短，已更新矩阵。' : '只有候选更短时才更新矩阵。');
       } else detail = k === null ? '距离矩阵记录顶点之间的距离，∞ 表示目前没有可达路径。'
         : '本轮检查经过 ' + k + ' 的路线，看看能否缩短原距离。';

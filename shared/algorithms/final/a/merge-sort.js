@@ -18,7 +18,7 @@ const SOURCE_LINES = [
 export function generateMergeSortSteps(input) {
   const array = [...input];
   const steps = [];
-  let state = { low: 0, high: 0, mid: 0, i: 0, j: 0, k: 0, p: null, temp: [] };
+  const state = { low: 0, high: array.length - 1, mid: null, i: null, j: null, k: null, p: null, temp: [] };
 
   function record(event, lineId, description, extra = {}) {
     const vars = { ...state, ...extra };
@@ -35,6 +35,7 @@ export function generateMergeSortSteps(input) {
   function mergeSort(low, high) {
     state.low = low; state.high = high; state.mid = null;
     state.i = null; state.j = null; state.k = null; state.p = null;
+    state.temp = [];
     
     if (low >= high) return;
 

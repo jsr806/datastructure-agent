@@ -51,6 +51,33 @@ test('A包：堆排序外层调用与内部根节点状态分离', () => {
   assert.equal(calls[0].variables.i, 1);
   assert.equal(calls[1].variables.heapSize, 4);
   assert.equal(calls[1].variables.i, 0);
+  const declaration = run.sourceLines.findIndex(line => /^void heapify\(.*\);$/.test(line.text));
+  const sort = run.sourceLines.findIndex(line => line.lineId === 'init');
+  assert.ok(declaration >= 0 && declaration < sort);
+});
+
+test('A包：快速排序和归并排序的递归帧从本层变量开始', () => {
+  const quick = generateQuickSortSteps([3, 1, 2, 5, 4]);
+  assert.deepEqual(quick.steps[0].variables, { low: 0, high: 4, i: null, j: null, pivot: null });
+  const pivots = quick.steps.filter(step => step.event === 'init-pivot');
+  assert.ok(pivots.length > 1);
+  for (const { variables } of pivots) {
+    assert.equal(variables.i, null);
+    assert.equal(variables.j, null);
+  }
+  assert.deepEqual(quick.result, [1, 2, 3, 4, 5]);
+
+  const merge = generateMergeSortSteps([4, 1, 3, 2]);
+  const right = merge.steps.find(step => step.event === 'divide' && step.variables.low === 2);
+  assert.deepEqual(right.variables.temp, []);
+  assert.equal(right.variables.k, null);
+  assert.deepEqual(merge.result, [1, 2, 3, 4]);
+});
+
+test('A包：简单选择排序区分候选下标与候选值', () => {
+  const run = generateSelectionSortSteps([5, 2]);
+  const candidate = run.steps.find(step => step.event === 'init-min');
+  assert.match(candidate.description, /A\[0\] = 5.*下标 0/);
 });
 
 test('A包：前端严格校验拦截非法类型与缺失字段', () => {
