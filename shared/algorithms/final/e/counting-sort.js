@@ -3,8 +3,8 @@ const SOURCE_VERSION = 'counting-sort-c-v1';
 const SOURCE_LINES = [
   { lineId: 'init', text: 'void counting_sort(int arr[], int n) {' },
   { lineId: 'find-minmax', text: '  int minv = arr[0], maxv = arr[0];' },
-  { lineId； 'scan-minmax', text: '  for(int i=0;i<n;i++){ minv=min(minv,arr[i]); maxv=max(maxv,arr[i]); }' },
-  { lineId: 'alloc-count', text: '  int range = maxv - minv + 1; int* cnt = new int[range]{0};' },
+  { lineId: 'scan-minmax', text: '  for(int i=0;i<n;i++){ minv=min(minv,arr[i]); maxv=max(maxv,arr[i]); }' },
+  { lineId: 'alloc-count', text: '  int range = maxv - minv + 1; int* cnt = new int[range]; memset(cnt,0,sizeof(int)*range);' },
   { lineId: 'count-loop', text: '  for(int i=0;i<n;i++) cnt[arr[i]-minv]++;' },
   { lineId: 'prefix-loop', text: '  for(int i=1;i<range;i++) cnt[i] += cnt[i-1];' },
   { lineId: 'fill-ans', text: '  int* tmp = new int[n]; for(int i=n-1;i>=0;i--)' },
@@ -15,18 +15,19 @@ const SOURCE_LINES = [
 ];
 
 /**
- * 计数排序轨迹生成（稳定版，从后往前填充）
+ * 计数排序（稳定版，支持负数，值域保护，符合项目返回契约）
  * @param {{list: number[]}} input
- * @returns {Array} steps
+ * @returns {{steps:any[],result:number[]|null,sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
  */
 export function generateCountingSortSteps(input) {
   const { list } = input;
   const steps = [];
-  let arr = [...list];
+  const arr = JSON.parse(JSON.stringify(list));
   const n = arr.length;
 
   function record(event, lineId, description, extraVars = {}) {
-    const done = event === 'sorted';
+    const done = event === 'sorted' || event === 'error';
+    const arrSnap = JSON.parse(JSON.stringify(arr));
     steps.push({
       schemaVersion: '1.0',
       algorithm: 'counting-sort',
@@ -34,22 +35,22 @@ export function generateCountingSortSteps(input) {
       sourceVersion: SOURCE_VERSION,
       event,
       lineId,
-      array: [...arr],
+      array: arrSnap,
       variables: {
-        arr: [...arr],
+        arr: arrSnap,
         n,
         ...extraVars,
       },
       description,
       done,
-      result: done ? [...arr] : null,
+      result: done ? JSON.parse(JSON.stringify(arr)) : null,
     });
   }
 
   record('init', 'init', `待排序数组 [${arr.join(',')}]，开始稳定计数排序`);
   if (n <= 1) {
     record('sorted', 'done', `数组长度${n}，无需排序：[${arr.join(',')}]`);
-    return{ steps, result: [...arr], sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+    return { steps, result: [...arr], sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
   }
 
   let minv = arr[0];
@@ -62,16 +63,18 @@ export function generateCountingSortSteps(input) {
   record('scan-minmax', 'scan-minmax', `扫描完成，min=${minv}, max=${maxv}` , { minv, maxv });
 
   const range = maxv - minv + 1;
-  // 新增校验：全部元素是整数
-if (!arr.every(x => Number.isInteger(x))) {
-  record('error', 'alloc-count', '存在非整数元素，计数排序终止');
-  return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
-}
-const MAX_RANGE = 5000;
-if (range > MAX_RANGE) {
-  record('error', 'alloc-count', `值域跨度 ${range}，超过最大允许 ${MAX_RANGE}，终止排序`);
-  return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
-}
+  const MAX_RANGE = 5000;
+
+  // 校验全部元素为整数
+  if (!arr.every(x => Number.isInteger(x))) {
+    record('error', 'alloc-count', '存在非整数元素，计数排序终止');
+    return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+  }
+  // 校验值域跨度上限
+  if (range > MAX_RANGE) {
+    record('error','alloc-count',`值域跨度${range}超过最大允许${MAX_RANGE}，终止`);
+    return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+  }
 
   const cnt = new Array(range).fill(0);
   record('alloc-count', 'alloc-count', `开辟计数数组，区间长度range=${range}，cnt初始全0`, { cnt:[...cnt], minv, maxv, range });
@@ -105,5 +108,5 @@ if (range > MAX_RANGE) {
   record('copy-back', 'copy-back', `将临时数组拷贝回原数组`);
 
   record('sorted', 'done', `计数排序完成，结果：[${arr.join(',')}]`);
-  return steps;
+  return { steps, result: [...arr], sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
 }
