@@ -2,16 +2,16 @@
 const SOURCE_VERSION = 'kth-from-end-c-v1';
 const SOURCE_LINES = [
   { lineId: 'init', text: 'ListNode* findKthFromEnd(ListNode* head, int k) {' },
-  { lineId: 'check-k', text: '  if(k<=0) return nullptr;' },
+  { lineId: 'check-k', text: '  if(k<=0) return NULL;' },
   { lineId: 'fast-init', text: '  ListNode *fast=head,*slow=head;' },
-  { lineId: 'fast-forward', text: '  for(int i=0;i<k;i++){ if(!fast) return nullptr; fast=fast->next; }' },
+  { lineId: 'fast-forward', text: '  for(int i=0;i<k;i++){ if(!fast) return NULL; fast=fast->next; }' },
   { lineId: 'both-walk', text: '  while(fast){ fast=fast->next; slow=slow->next; }' },
   { lineId: 'return-res', text: '  return slow;' },
   { lineId: 'done', text: '}' },
 ];
 
 /**
- * 单链表查找倒数第k节点
+ * 单链表查找倒数第k节点；二次复审：结束帧保留fastId/slowId；result契约对齐；nullptr→NULL
  * @param {{list:number[],k:number}} input
  * @returns {{steps:any[],result:{nodeId:number|null,value:number|null},sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
  */
@@ -34,7 +34,7 @@ export function generateKthFromEndSteps(input) {
       variables: { nodes: nodesSnap, ...extraVars },
       description,
       done,
-      result: done ? JSON.parse(JSON.stringify(extraVars.retResult ?? {nodeId:null,value:null})) : null
+      result: done ? (event === 'error' ? null : JSON.parse(JSON.stringify(extraVars.retResult ?? {nodeId:null,value:null}))) : null
     });
   }
 
@@ -66,7 +66,8 @@ export function generateKthFromEndSteps(input) {
 
   const retResult = { nodeId: slowId, value: nodes[slowId].value };
   record('return-res','return-res',`fast到达末尾，slow指向目标节点 id=${slowId}, value=${retResult.value}`,{fastId,slowId,retResult});
-  record('sorted','done',`倒数第${k}个节点值为：${retResult.value}`,{retResult});
+  //【二次复审】sorted帧保留fastId、slowId用于回放高亮
+  record('sorted','done',`倒数第${k}个节点值为：${retResult.value}`,{fastId,slowId,retResult});
 
   return { steps, result: retResult, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
 }
