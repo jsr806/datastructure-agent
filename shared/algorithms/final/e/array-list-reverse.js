@@ -1,29 +1,25 @@
 // shared/algorithms/final/e/array-list-reverse.js
-const SOURCE_VERSION = 'array-reverse-c-v1';
+const SOURCE_VERSION = 'array-list-reverse-c-v1';
 const SOURCE_LINES = [
-  { lineId: 'init', text: 'void array_reverse(SqList* L) {' },
-  { lineId: 'loop-init', text: '  int i = 0, j = L->length - 1;' },
-  { lineId: 'loop-cond', text: '  while (i < j) {' },
-  { lineId: 'swap', text: '    swap(L->data[i], L->data[j]);' },
-  { lineId: 'move-i', text: '    i++;' },
-  { lineId: 'move-j', text: '    j--;' },
-  { lineId: 'loop-end', text: '  }' },
+  { lineId: 'init', text: 'void array_reverse(int arr[], int len) {' },
+  { lineId: 'loop-swap', text: '  for(int i=0;i<len/2;i++){ int t=arr[i]; arr[i]=arr[len-1-i]; arr[len-1-i]=t; }' },
   { lineId: 'done', text: '}' },
 ];
 
 /**
- * 顺序表逆置轨迹生成
- * @param {{list: number[], maxSize: number}} input
- * @returns {Array} steps
+ * 顺序表原地逆置 二次复审修复版
+ * @param {{list:number[]}} input
+ * @returns {{steps:any[],result:number[],sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
  */
 export function generateArrayListReverseSteps(input) {
-  const { list, maxSize = 20 } = input;
+  const { list } = input;
   const steps = [];
-  let arr = [...list];
-  let len = arr.length;
+  const arr = JSON.parse(JSON.stringify(list));
+  const len = arr.length;
 
   function record(event, lineId, description, extraVars = {}) {
     const done = event === 'sorted';
+    const snapArr = JSON.parse(JSON.stringify(arr));
     steps.push({
       schemaVersion: '1.0',
       algorithm: 'array-list-reverse',
@@ -31,44 +27,28 @@ export function generateArrayListReverseSteps(input) {
       sourceVersion: SOURCE_VERSION,
       event,
       lineId,
-      array: [...arr],
-      variables: {
-        arr: [...arr],
-        length: len,
-        maxSize,
-        ...extraVars,
-      },
+      array: snapArr,
+      variables: { arr: snapArr, len, ...extraVars },
       description,
       done,
-      result: done ? [...arr] : null,
+      result: done ? JSON.parse(JSON.stringify(arr)) : null
     });
   }
 
-  record('init', 'init', `初始顺序表 [${arr.join(',')}]，准备逆置`);
-
-  if (len <= 1) {
-    record('sorted', 'done', `表长${len}无需逆置，结果：[${arr.join(',')}]`);
-    return steps;
+  record('init', 'init', `原始数组 [${arr.join(',')}]，原地逆置`);
+  if(len <= 1){
+    record('sorted','done',`无需逆置 [${arr.join(',')}]`);
+    return {steps, result:[...arr], sourceVersion:SOURCE_VERSION, sourceLines:SOURCE_LINES};
   }
 
-  let i = 0;
-  let j = len - 1;
-  record('loop-init', 'loop-init', `初始化双指针 i=${i}, j=${j}`, { i, j });
-
-  while (i < j) {
-    // 交换
+  for(let i=0; i < Math.floor(len/2); i++){
+    const j = len - 1 - i;
     const tmp = arr[i];
     arr[i] = arr[j];
     arr[j] = tmp;
-    record('swap', 'swap', `交换 data[${i}]=${arr[j]} 与 data[${j}]=${arr[i]}`, { i, j });
-
-    i++;
-    record('move-i', 'move-i', `i指针右移，i=${i}`, { i, j });
-
-    j--;
-    record('move-j', 'move-j', `j指针左移，j=${j}`, { i, j });
+    record('loop-swap','loop-swap',`交换下标${i}与${j}，数组[${arr.join(',')}]`,{i,j});
   }
 
-  record('sorted', 'done', `逆置完成，顺序表：[${arr.join(',')}]`);
-  return steps;
+  record('sorted','done',`逆置完成：[${arr.join(',')}]`);
+  return { steps, result:[...arr], sourceVersion:SOURCE_VERSION, sourceLines: SOURCE_LINES };
 }
