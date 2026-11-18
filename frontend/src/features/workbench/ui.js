@@ -1,3 +1,4 @@
+import { gAlgorithm } from './g-algorithms.js';
 import { dataAlgorithm as cAlgorithm } from './data-algorithms.js';
 import { arraySearch } from './array-search.js';
 import { graphAlgorithm } from './graph-algorithms.js';
@@ -105,7 +106,7 @@ export function createWorkbenchUI({ onNavigate = () => {} } = {}) {
       query.set('unit', unit);
       if (section && /^[a-z0-9-]{1,50}$/.test(section)) query.set('section', section);
     }
-    if (name === 'workbench' && (['insertion-sort', 'binary-insertion-sort', 'shell-sort', 'selection-sort', 'quick-sort', 'heap-sort', 'merge-sort', 'binary-search', 'bubble-sort', 'custom-array', 'union-find', 'binary-tree-level-order'].includes(requestedAlgorithm) || graphAlgorithm(requestedAlgorithm) || arraySearch(requestedAlgorithm) || cAlgorithm(requestedAlgorithm))) {
+    if (name === 'workbench' && (['insertion-sort', 'binary-insertion-sort', 'shell-sort', 'selection-sort', 'quick-sort', 'heap-sort', 'merge-sort', 'binary-search', 'bubble-sort', 'custom-array', 'union-find'].includes(requestedAlgorithm) || gAlgorithm(requestedAlgorithm) || graphAlgorithm(requestedAlgorithm) || arraySearch(requestedAlgorithm) || cAlgorithm(requestedAlgorithm))) {
       query.set('algorithm', requestedAlgorithm);
     }
     const hash = '#' + name + (query.size ? '?' + query : '');
@@ -212,14 +213,15 @@ export function createWorkbenchUI({ onNavigate = () => {} } = {}) {
     navigate,
     setAlgorithm(value) {
       algorithm = value;
-      panel.querySelector('.tutor-practice').hidden = Boolean(graphAlgorithm(value) || arraySearch(value) || cAlgorithm(value) || value === 'union-find' || value === 'binary-tree-level-order');
+      panel.querySelector('.tutor-practice').hidden = Boolean(graphAlgorithm(value) || arraySearch(value) || cAlgorithm(value) || value === 'union-find' || gAlgorithm(value));
       const tutorUnavailable = value === 'custom-array';
       if (tutorUnavailable && open) show(false, false);
       ball.hidden = currentPage !== 'workbench' || tutorUnavailable;
     },
     setContext(context) {
-      if (algorithm === 'binary-tree-level-order') {
-        $('tutor-prompt').textContent='为什么要先把左孩子加入队列？';
+      const g = gAlgorithm(algorithm);
+      if (g) {
+        $('tutor-prompt').textContent = g.prompt;
         return;
       }
       if (cAlgorithm(algorithm)) {

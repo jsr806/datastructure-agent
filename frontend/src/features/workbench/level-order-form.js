@@ -55,10 +55,9 @@ export function createLevelOrderForm({message,onChange}) {
   });
   return {
     setActive(value){active=value;collapsed=false;update();},
-    fillDemo(){
+    fillDemo(children=[['B','C'],['','D'],['',''],['','']]){
       input.value='A, B, C, D'; list.replaceChildren(); root.value='';
       count();next();
-      const children=[['B','C'],['','D'],['',''],['','']];
       Array.from(list.children).forEach((row,index)=>Array.from(row.querySelectorAll('select')).forEach((select,side)=>select.value=children[index][side]));
       second=false;collapsed=false;update();
     },
@@ -73,8 +72,8 @@ export function createLevelOrderForm({message,onChange}) {
       for(const node of value.nodes) if([node.left,node.right].some(id=>id!==null&&!nodes.includes(id)))throw new Error('孩子引用了已删除的节点，请修改。');
       return value;
     },
-    summarize(value){
-      byId('tree-summary-text').textContent=value.nodes.length+' 个节点 · 根节点 '+(value.root??'空');
+    summarize(value,modeLabel){
+      byId('tree-summary-text').textContent=(modeLabel ? modeLabel+' · ' : '')+value.nodes.length+' 个节点 · 根节点 '+(value.root??'空');
       collapsed=true;update();byId('tree-edit').focus();
     }
   };

@@ -6,6 +6,15 @@ import { generateHashQuadraticProbingSteps } from '../../../shared/algorithms/fi
 import { generateHashDoubleHashingSteps } from '../../../shared/algorithms/final/d/hash-double-hashing.js';
 import { generateHashChainingSteps } from '../../../shared/algorithms/final/d/hash-chaining.js';
 import { generateBinaryTreeLevelOrderSteps } from '../../../shared/algorithms/final/g/binary-tree-level-order.js';
+import { generateBinaryTreePreorderSteps } from '../../../shared/algorithms/final/g/binary-tree-preorder.js';
+import { generateBinaryTreeInorderSteps } from '../../../shared/algorithms/final/g/binary-tree-inorder.js';
+import { generateBinaryTreePostorderSteps } from '../../../shared/algorithms/final/g/binary-tree-postorder.js';
+import { generateBinaryTreeReconstructionSteps } from '../../../shared/algorithms/final/g/binary-tree-reconstruction.js';
+import { generateThreadedBinaryTreeSteps } from '../../../shared/algorithms/final/g/threaded-binary-tree.js';
+import { generateTreeForestConversionSteps } from '../../../shared/algorithms/final/g/tree-forest-conversion.js';
+import { generateTreeForestTraversalSteps } from '../../../shared/algorithms/final/g/tree-forest-traversal.js';
+import { generateHuffmanCodingSteps } from '../../../shared/algorithms/final/g/huffman-coding.js';
+import { generateBinarySearchTreeReplay, restoreBinarySearchTreeRun } from '../../../shared/algorithms/final/g/binary-search-tree.js';
 import { algorithms as cAlgorithms } from '../../../shared/algorithms/final/c/index.js';
 import { validateUnionFindInput } from '../../../frontend/src/features/workbench/union-find-input.js';
 import { generateUnionFindSteps } from '../../../shared/algorithms/final/b/union-find.js';
@@ -64,17 +73,40 @@ export function handleCreateBubbleRun(res, body) {
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify(run));
 }
-export function handleCreateLevelOrderRun(res, body) {
+const gGenerators = {
+  'binary-tree-level-order': generateBinaryTreeLevelOrderSteps,
+  'binary-tree-preorder': generateBinaryTreePreorderSteps,
+  'binary-tree-inorder': generateBinaryTreeInorderSteps,
+  'binary-tree-postorder': generateBinaryTreePostorderSteps,
+  'binary-tree-reconstruction': generateBinaryTreeReconstructionSteps,
+  'threaded-binary-tree': generateThreadedBinaryTreeSteps,
+  'tree-forest-conversion': generateTreeForestConversionSteps,
+  'tree-forest-traversal': generateTreeForestTraversalSteps,
+  'huffman-coding': generateHuffmanCodingSteps,
+  'binary-search-tree': generateBinarySearchTreeReplay,
+};
+
+function sendRun(res, run) {
+  const { replay, runId, createdAt, algorithm, input } = run;
+  const payload = replay ? { runId, createdAt, algorithm, input, ...replay } : run;
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(payload));
+}
+
+export function handleCreateGRun(res, body, algorithm) {
   let input, result;
   try {
-    input=JSON.parse(body);
-    result=generateBinaryTreeLevelOrderSteps(input);
-  } catch(error) {
+    input = JSON.parse(body);
+    result = gGenerators[algorithm](input);
+  } catch (error) {
     if (!(error instanceof TypeError || error instanceof SyntaxError)) throw error;
-    return sendError(res,400,'INVALID_INPUT',error.message);
+    return sendError(res, 400, 'INVALID_INPUT', error.message);
   }
-  res.writeHead(200,{'Content-Type':'application/json'});
-  res.end(JSON.stringify(createRun({algorithm:'binary-tree-level-order',input,...result})));
+  // Step lookup and tutoring use the same expanded snapshots as the browser.
+  const runData = algorithm === 'binary-search-tree'
+    ? { replay: result, ...restoreBinarySearchTreeRun(result) }
+    : result;
+  sendRun(res, createRun({ algorithm, input, ...runData }));
 }
 
 const dGenerators={
@@ -209,8 +241,7 @@ export function handleCreateGraphRun(res, body, algorithm) {
 export function handleGetRun(req, res, runId) {
   const run = getRun(runId);
   if (!run) return sendError(res, 404, 'RUN_NOT_FOUND', '未找到该 run');
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(run));
+  sendRun(res, run);
 }
 
 export function handleGetStep(req, res, runId, stepIndex) {

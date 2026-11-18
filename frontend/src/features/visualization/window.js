@@ -4,6 +4,8 @@
 
 import { dAlgorithm } from '../workbench/d-algorithms.js';
 import { createDStateTable } from './d-state-table.js';
+import { gAlgorithm } from '../workbench/g-algorithms.js';
+import { createGStateTable } from './g-state-table.js';
 import { createLevelOrderTable } from './level-order-table.js';
 import { dataAlgorithm as cAlgorithm } from '../workbench/data-algorithms.js';
 import { createCStateTable } from './c-state-table.js';
@@ -86,20 +88,28 @@ export function createVizWindow(host, {
   root.className = 'win vizwin';
   root.dataset.win = 'viz';
   const c = cAlgorithm(algorithm);
-  const levelOrder=algorithm==='binary-tree-level-order';
+  const g = gAlgorithm(algorithm);
+  const levelOrder = algorithm === 'binary-tree-level-order';
+  const scrollableTreeTable = g && !levelOrder;
   const unionFind = algorithm === 'union-find';
   const sorting = SORT_ALGORITHMS.includes(algorithm);
   const custom = algorithm === 'custom-array';
   const graph = graphAlgorithm(algorithm);
   const search = arraySearch(algorithm);
-  const useLegacy = !levelOrder && !c && !unionFind && !search && !graph && !sorting && !custom && new URLSearchParams(window.location.search).get('viz') === 'legacy';
+  const useLegacy = !g && !c && !unionFind && !search && !graph && !sorting && !custom && new URLSearchParams(window.location.search).get('viz') === 'legacy';
   root.innerHTML = TEMPLATE;
-  if(levelOrder){
-    root.querySelector('.win-sub').textContent='二叉树层序遍历 · 状态表';
-    root.querySelector('.vh-title').textContent='节点与队列';
-    root.querySelector('.vh-sub').textContent='树形动画待接入';
+  if (g) {
+    root.querySelector('.win-sub').textContent = g.title + ' · 执行状态';
+    root.querySelector('.vh-title').textContent = levelOrder ? '节点与队列' : '状态表';
+    root.querySelector('.vh-sub').textContent = g.title;
     root.querySelector('.viewport-legend').hidden=true;
     root.querySelector('[data-viz-replay]').hidden=true;
+  }
+  if (scrollableTreeTable) {
+    root.dataset.tableView = 'true';
+    root.querySelector('[data-viz-body]').setAttribute('aria-label', '执行状态表，可滚动查看');
+    root.querySelector('[data-viz-view-reset]').hidden = true;
+    root.querySelector('.viewport-hint').hidden = true;
   }
   if (c) {
     root.querySelector('.win-sub').textContent=c.title + ' · 执行状态';
@@ -180,7 +190,7 @@ export function createVizWindow(host, {
   let graphPreview = null;
   let unionFindTable = null;
   let cStateTable = null;
-  let levelOrderTable=null;
+  let gStateTable = null;
   let graphExplanation = null;
   let currentRun = run;
   let state = { stepIndex: 0, total: 0, playing: false, canPrev: false, canNext: false };
@@ -198,6 +208,7 @@ export function createVizWindow(host, {
   }
 
   function fitView() {
+    if (scrollableTreeTable) return;
     const cw = body.clientWidth || 1;
     const ch = body.clientHeight || 1;
     const sw = scene.offsetWidth || 1;
@@ -213,7 +224,7 @@ export function createVizWindow(host, {
   let panning = false;
   let panStart = { x: 0, y: 0 };
   body.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 || event.target.closest?.('button, select, input, .bsviz-explain')) return;
+    if (scrollableTreeTable || event.button !== 0 || event.target.closest?.('button, select, input, .bsviz-explain')) return;
     body.focus({preventScroll:true});
     panning = true;
     panStart = { x: event.clientX - view.x, y: event.clientY - view.y };
@@ -231,7 +242,7 @@ export function createVizWindow(host, {
   body.addEventListener('pointerup', stopPan);
   body.addEventListener('pointercancel', stopPan);
   body.addEventListener('wheel', (event) => {
-    if (!event.ctrlKey || event.deltaY === 0) return;
+    if (scrollableTreeTable || !event.ctrlKey || event.deltaY === 0) return;
     event.preventDefault();
     const rect = body.getBoundingClientRect();
     const cx = event.clientX - rect.left - rect.width / 2;
@@ -245,7 +256,7 @@ export function createVizWindow(host, {
   }, { passive: false });
 
   const onHomeKey = (event) => {
-    if (event.key !== 'Home') return;
+    if (scrollableTreeTable || event.key !== 'Home') return;
     if (!host.contains(document.activeElement)) return;
     if (/^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName ?? '')) return;
     event.preventDefault();
@@ -297,10 +308,15 @@ export function createVizWindow(host, {
   function renderRuler(total) {
     ruler.setAttribute('aria-valuemin', '1');
     const count = Math.max(1, total);
-    tickHost.replaceChildren(...Array.from({ length: count }, (_, index) => {
+    const tickCount = Math.min(count, 100);
+    const sampled = tickCount < count;
+    tickHost.classList.toggle('is-sampled', sampled);
+    tickHost.replaceChildren(...Array.from({ length: tickCount }, (_, tickIndex) => {
+      const index = sampled ? Math.round(tickIndex * (count - 1) / (tickCount - 1)) : tickIndex;
       const tick = document.createElement('div');
       tick.className = 'tl-tick';
       tick.dataset.index = String(index);
+      if (sampled) tick.style.left = ((index + 0.5) / count * 100) + '%';
       const dot = document.createElement('span');
       dot.className = 'tl-dot';
       const label = document.createElement('span'); label.className = 'tl-label'; label.textContent = String(index + 1);
@@ -317,7 +333,8 @@ export function createVizWindow(host, {
     const pct = `${Math.min(100, Math.max(0, pos))}%`;
     playhead.style.left = pct;
     ruler.setAttribute('aria-valuenow', String(state.stepIndex + 1));
-    tickHost.querySelectorAll('.tl-tick').forEach((tick, index) => {
+    tickHost.querySelectorAll('.tl-tick').forEach(tick => {
+      const index = Number(tick.dataset.index);
       tick.classList.toggle('is-done', index < state.stepIndex);
       tick.classList.toggle('is-current', index === state.stepIndex);
       tick.classList.toggle('is-end', index === state.total - 1);
@@ -328,12 +345,15 @@ export function createVizWindow(host, {
 
   function updateLabelDensity() {
     const count = Math.max(1, tickHost.children.length);
-    const cellWidth = ruler.clientWidth / count;
+    const width = ruler.clientWidth;
+    const cellWidth = width / count;
+    const stepWidth = width / Math.max(1, state.total);
     const stride = Math.max(1, Math.ceil(26 / Math.max(1, cellWidth)));
-    [...tickHost.children].forEach((tick, index) => {
+    [...tickHost.children].forEach((tick, tickIndex) => {
+      const index = Number(tick.dataset.index);
       const current = index === state.stepIndex;
-      const nearCurrent = state.stepIndex >= 0 && Math.abs(index - state.stepIndex) * cellWidth < 24;
-      tick.querySelector('.tl-label').style.visibility = current || (!nearCurrent && (index % stride === 0 || index === count - 1)) ? 'visible' : 'hidden';
+      const nearCurrent = state.stepIndex >= 0 && Math.abs(index - state.stepIndex) * stepWidth < 24;
+      tick.querySelector('.tl-label').style.visibility = current || (!nearCurrent && (tickIndex % stride === 0 || tickIndex === count - 1)) ? 'visible' : 'hidden';
     });
   }
 
@@ -384,10 +404,12 @@ export function createVizWindow(host, {
     if (!nextRun) return;
     if (viz) viz.destroy();
     scene.replaceChildren();
-    if(levelOrder){
-      levelOrderTable=createLevelOrderTable();scene.append(levelOrderTable.element);
-      graphExplanation=createExplanationPanel();explainHost.replaceChildren(graphExplanation.explain);
-    }else if (c) {
+    if (g) {
+      gStateTable = levelOrder ? createLevelOrderTable() : createGStateTable(algorithm, g);
+      scene.append(gStateTable.element);
+      graphExplanation = createExplanationPanel();
+      explainHost.replaceChildren(graphExplanation.explain);
+    } else if (c) {
       cStateTable=dAlgorithm(algorithm) ? createDStateTable(c) : createCStateTable(c);
       scene.append(cStateTable.element);
       graphExplanation=createExplanationPanel();
@@ -413,10 +435,12 @@ export function createVizWindow(host, {
 
   function setStep(step, nextState = {}) {
     state = { ...state, ...nextState };
-    if(levelOrderTable && step){
-      levelOrderTable.showStep(step);
-      graphExplanation.caption.textContent=step.description;
-      graphExplanation.status.textContent='访问顺序：'+(step.variables.order.join(' → ')||'空')+'。队列先进先出，孩子先左后右入队。';
+    if (gStateTable && step) {
+      gStateTable.showStep(step);
+      graphExplanation.caption.textContent = step.description;
+      graphExplanation.status.textContent = levelOrder
+        ? '访问顺序：' + (step.variables.order.join(' → ') || '空') + '。队列先进先出，孩子先左后右入队。'
+        : (step.done ? '运行结束' : '');
     }
     if (cStateTable && step) {
       cStateTable.showStep(step);
@@ -464,7 +488,7 @@ export function createVizWindow(host, {
   if (run) bindRun(run);
   else {
     const empty = document.createElement('p'); empty.className = 'viz-empty';
-    empty.textContent = levelOrder ? '填写节点与左右孩子，运行后查看队列及分层结果。' : c ? '填写输入并运行。动画视图待接入，当前使用状态表。' : unionFind ? '填写元素和操作，运行后查看父节点表。' : graph ? '填写顶点和边，再运行 ' + graph.name + '。' : '填入示例并开始分析，查看真实执行过程。'; scene.append(empty);
+    empty.textContent = levelOrder ? '填写节点与左右孩子，运行后查看队列及分层结果。' : g ? '填写输入或载入示例，运行后查看每一步的状态。' : c ? '填写输入并运行。动画视图待接入，当前使用状态表。' : unionFind ? '填写元素和操作，运行后查看父节点表。' : graph ? '填写顶点和边，再运行 ' + graph.name + '。' : '填入示例并开始分析，查看真实执行过程。'; scene.append(empty);
     applyView();
   }
   setStep(run?.steps[0] ?? null, {stepIndex:run ? 0 : -1,total:run?.steps.length ?? 0,canPrev:false,canNext:Boolean(run && run.steps.length > 1),playing:false});

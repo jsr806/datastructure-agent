@@ -1,0 +1,156 @@
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { selectWorkbenchAlgorithm } from './select-workbench-algorithm.mjs';
+import { restoreBinarySearchTreeRun } from '../shared/algorithms/final/g/binary-search-tree.js';
+
+const { chromium } = await import(process.env.TEST_PLAYWRIGHT_MODULE
+  ? pathToFileURL(process.env.TEST_PLAYWRIGHT_MODULE).href : 'playwright');
+const server = spawn(process.execPath, ['backend/src/server.js'], {
+  cwd: fileURLToPath(new URL('../', import.meta.url)),
+  env: { ...process.env, PORT: '0', HOST: '127.0.0.1', AGENT_MOCK: 'true', RATE_LIMIT: 'false' },
+  windowsHide: true,
+});
+const examples = [
+  ['binary-tree-preorder', ['A', 'B', 'D', 'C'], /递归栈/],
+  ['binary-tree-inorder', ['B', 'D', 'A', 'C'], /递归栈/],
+  ['binary-tree-postorder', ['D', 'B', 'C', 'A'], /递归栈/],
+  ['binary-tree-level-order', ['A', 'B', 'C', 'D'], /分层访问结果/],
+  ['binary-tree-reconstruction', { root: 'A', nodes: [{ id: 'A', left: 'B', right: 'C' }, { id: 'B', left: null, right: 'D' }, { id: 'D', left: null, right: null }, { id: 'C', left: null, right: null }] }, /重建区间/],
+  ['threaded-binary-tree', ['B', 'D', 'A', 'C'], /前驱线索/],
+  ['tree-forest-conversion', { root: 'A', nodes: [{ id: 'A', left: 'B', right: 'D' }, { id: 'B', left: null, right: 'C' }, { id: 'C', left: null, right: null }, { id: 'D', left: null, right: null }] }, /左孩子右兄弟表示/],
+  ['tree-forest-traversal', ['A', 'B', 'C', 'D'], /有序森林/],
+  ['huffman-coding', ['00', '01', '1'], /码字表/],
+  ['binary-search-tree', [3, 4, 5, 7], /中序结果/],
+];
+
+async function startRun(page, id, expectedStatus = 200) {
+  const responsePromise = page.waitForResponse(response => response.url().endsWith('/api/algorithms/' + id + '/runs'));
+  await page.click('#startBtn');
+  const response = await responsePromise;
+  assert.equal(response.status(), expectedStatus, id);
+  const data = await response.json();
+  if (expectedStatus !== 200) return data;
+  const run = id === 'binary-search-tree' ? restoreBinarySearchTreeRun(data) : data;
+  await page.waitForFunction(() => !document.querySelector('#g-edit').parentElement.hidden || !document.querySelector('#tree-edit').parentElement.hidden);
+  return run;
+}
+
+async function assertStep(page, run, index) {
+  const step = run.steps[index];
+  await page.waitForFunction(({ index, lineId }) =>
+    document.querySelector('[data-tl-ruler]').getAttribute('aria-valuenow') === String(index + 1) &&
+    document.querySelector('#code-lines [aria-current="step"]')?.dataset.lineId === lineId,
+  { index, lineId: step.lineId });
+  assert.equal(await page.locator('#step-description').textContent(), step.description);
+  assert.equal(await page.locator('[data-explain-host] .bsviz-caption').textContent(), step.description);
+}
+
+let browser;
+try {
+  const base = await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Backend startup timed out')), 10000);
+    server.once('error', reject);
+    server.stdout.on('data', chunk => {
+      const match = String(chunk).match(/http:\/\/127\.0\.0\.1:\d+/);
+      if (match) { clearTimeout(timer); resolve(match[0]); }
+    });
+  });
+  browser = await chromium.launch({ channel: process.env.TEST_BROWSER_CHANNEL || 'msedge', headless: true });
+  const page = await browser.newPage();
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(base);
+  for (const [id, result, caption] of examples) {
+    await selectWorkbenchAlgorithm(page, id);
+    await page.click('#fillDemo');
+    if (await page.locator('#tree-next').isVisible()) await page.click('#tree-next');
+    const run = await startRun(page, id);
+    const actual = id === 'huffman-coding' ? run.result.codes.map(code => code.code)
+      : id === 'binary-search-tree' ? run.result.inorder : run.result.order ?? run.result;
+    assert.deepEqual(actual, result, id);
+    await assertStep(page, run, 0);
+    await page.click('#nextBtn');
+    await assertStep(page, run, 1);
+    await page.click('[data-t="last"]');
+    await assertStep(page, run, run.steps.length - 1);
+    assert.match(await page.locator('.level-order-tables').innerText(), caption, id);
+    await page.click('#prevBtn');
+    const currentIndex = run.steps.length - 2;
+    await assertStep(page, run, currentIndex);
+    const answer = await page.request.post(base + '/api/agent/explain', {
+      data: { runId: run.runId, stepIndex: currentIndex, question: '这一步发生了什么？', hintLevel: 2 },
+    });
+    assert.equal(answer.status(), 200, id);
+    const { stepRefs } = await answer.json();
+    assert.equal(stepRefs[0].algorithm, id);
+    assert.equal(stepRefs[0].stepIndex, currentIndex);
+    assert.deepEqual(stepRefs[0].variables, run.steps[currentIndex].variables);
+    await page.click('#resetBtn');
+    await assertStep(page, run, 0);
+  }
+
+  await selectWorkbenchAlgorithm(page, 'tree-forest-conversion');
+  await page.selectOption('#g-mode', 'to-forest');
+  await page.click('#fillDemo');
+  await page.click('#tree-next');
+  const forest = await startRun(page, 'tree-forest-conversion');
+  assert.deepEqual(forest.result.roots, ['A', 'D']);
+  assert.deepEqual(forest.result.nodes.find(node => node.id === 'A').children, ['B', 'C']);
+  await page.click('#tree-edit');
+  await page.getByLabel('C 的左孩子', { exact: true }).selectOption('A');
+  assert.equal((await startRun(page, 'tree-forest-conversion', 400)).error.code, 'INVALID_INPUT');
+  await page.click('#nextBtn');
+  await assertStep(page, forest, 1);
+  await page.selectOption('#g-mode', 'to-binary');
+  await page.fill('#g-primary', '');
+  await page.fill('#g-secondary', '');
+  assert.deepEqual((await startRun(page, 'tree-forest-conversion')).result, { root: null, nodes: [] });
+
+  await selectWorkbenchAlgorithm(page, 'tree-forest-traversal');
+  await page.selectOption('#g-mode', 'postorder');
+  await page.click('#fillDemo');
+  assert.deepEqual((await startRun(page, 'tree-forest-traversal')).result, ['B', 'C', 'A', 'D']);
+
+  await selectWorkbenchAlgorithm(page, 'binary-search-tree');
+  const operations = [...Array.from({ length: 64 }, (_, key) => 'insert ' + key), ...Array(64).fill('search 64')];
+  await page.fill('#g-primary', operations.join('\n'));
+  const started = performance.now();
+  const worst = await startRun(page, 'binary-search-tree');
+  const elapsedMs = Math.round(performance.now() - started);
+  assert.equal(worst.steps.length, 12482);
+  assert.ok(await page.locator('.tl-tick').count() <= 100);
+  const lookup = await page.request.get(base + '/api/runs/' + worst.runId);
+  assert.equal(lookup.status(), 200);
+  const transportBytes = (await lookup.body()).length;
+  assert.ok(transportBytes < 3_000_000, 'Expected compact replay on run lookup');
+
+  const ruler = page.locator('[data-tl-ruler]');
+  await ruler.press('End');
+  await assertStep(page, worst, worst.steps.length - 1);
+  await ruler.press('ArrowLeft');
+  const missing = worst.steps.at(-2);
+  await assertStep(page, worst, missing.stepIndex);
+  assert.equal(missing.variables.path.length, 64);
+  assert.match(await page.locator('#varValue').innerText(), /查找 64 · 未找到/);
+  const tableViewport = page.locator('[data-viz-body]');
+  assert.ok(await tableViewport.evaluate(element => {
+    element.scrollTop = element.scrollHeight;
+    return element.scrollTop > 0;
+  }), 'Large state tables can be scrolled');
+  const stepLookup = await page.request.get(base + '/api/runs/' + worst.runId + '/steps/' + missing.stepIndex);
+  assert.deepEqual((await stepLookup.json()).step, missing);
+  await page.click('#tutor-toggle');
+  await page.fill('#question-input', '本次未命中的比较路径是什么？');
+  const replyPromise = page.waitForResponse(response => response.url().endsWith('/api/agent/explain'));
+  await page.click('#send-btn');
+  const reply = await (await replyPromise).json();
+  assert.equal(reply.runId, worst.runId);
+  assert.equal(reply.stepIndex, missing.stepIndex);
+  assert.deepEqual(reply.stepRefs[0].variables, missing.variables);
+  assert.deepEqual(errors, []);
+  console.log('G workbench acceptance passed. Large BST replay: ' + transportBytes + ' bytes, ' + elapsedMs + ' ms to first rendered step.');
+} finally {
+  await browser?.close();
+  server.kill();
+}
