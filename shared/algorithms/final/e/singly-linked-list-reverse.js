@@ -1,102 +1,67 @@
 // shared/algorithms/final/e/singly-linked-list-reverse.js
-const SOURCE_VERSION = 'singly-reverse-c-v1';
+const SOURCE_VERSION = 'singly-linked-reverse-c-v1';
 const SOURCE_LINES = [
-  { lineId: 'init', text: 'Node* list_reverse(Node* head) {' },
-  { lineId: 'var-init', text: '  Node* pre = NULL; Node* cur = head; Node* next;' },
-  { lineId: 'loop', text: '  while (cur != NULL) {' },
-  { lineId: 'save-next', text: '    next = cur->next;' },
-  { lineId: 'turn-arrow', text: '    cur->next = pre;' },
-  { lineId: 'pre-move', text: '    pre = cur;' },
-  { lineId: 'cur-move', text: '    cur = next;' },
-  { lineId: 'loop-end', text: '  }' },
-  { lineId: 'return', text: '  return pre;' },
+  { lineId: 'init', text: 'ListNode* list_reverse(ListNode* head) {' },
+  { lineId: 'var-init', text: '  ListNode *pre=NULL,*cur=head,*next;' },
+  { lineId: 'loop', text: '  while(cur){ next=cur->next; cur->next=pre; pre=cur; cur=next; }' },
+  { lineId: 'return-pre', text: '  return pre;' },
   { lineId: 'done', text: '}' },
 ];
 
 /**
- * 构造链表结点数组，方便前端渲染
- * @param {number[]} arr
- * @returns {{val:number,id:number,next:number|null}[]}
+ * 单链表反转 二次复审修复版
+ * @param {{list:number[]}} input
+ * @returns {{steps:any[],result:number[],sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
  */
-function buildLinkedNodes(arr) {
-  const nodes = arr.map((v, idx) => ({ val: v, id: idx, next: idx + 1 }));
-  if (nodes.length > 0) nodes[nodes.length - 1].next = null;
-  return nodes;
-}
-
-/**
- * 单链表反转轨迹生成
- * @param {{list: number[]}} input
- * @returns {Array} steps
- */
-export function generateSinglyLinkedReverseSteps(input) {
+export function generateSinglyLinkedListReverseSteps(input) {
   const { list } = input;
   const steps = [];
-  let nodes = buildLinkedNodes(list);
-  let headId = nodes.length === 0 ? null : 0;
+  let nodes = list.map((v,id)=>({id,value:v,next:id+1<list.length?id+1:null}));
 
-  function record(event, lineId, description, extraVars = {}) {
-    const done = event === 'sorted';
+  function record(event, lineId, description, extraVars={}){
+    const done = event==='sorted';
+    const snapNodes = JSON.parse(JSON.stringify(nodes));
     steps.push({
-      schemaVersion: '1.0',
-      algorithm: 'singly-linked-list-reverse',
-      stepIndex: steps.length,
-      sourceVersion: SOURCE_VERSION,
+      schemaVersion:'1.0',
+      algorithm:'singly-linked-list-reverse',
+      stepIndex:steps.length,
+      sourceVersion:SOURCE_VERSION,
       event,
       lineId,
-      array: list,
-      variables: {
-        headId,
-        nodes: JSON.parse(JSON.stringify(nodes)),
-        ...extraVars,
-      },
+      array: snapNodes.map(x=>x.value),
+      variables:{ nodes:snapNodes, ...extraVars },
       description,
       done,
-      result: done ? JSON.parse(JSON.stringify(nodes)) : null,
+      result: done ? JSON.parse(JSON.stringify(snapNodes.map(x=>x.value))) : null
     });
   }
 
-  record('init', 'init', `初始链表 [${list.join(',')}]，准备反转链表`);
-
-  if (nodes.length === 0) {
-    record('sorted', 'done', '链表为空，反转结束，结果为空链表');
-    return steps;
+  record('init','init',`原始链表 [${list.join(',')}]，开始反转`);
+  if(nodes.length <=1){
+    record('sorted','done',`无需反转 [${nodes.map(x=>x.value).join(',')}]`);
+    return {steps, result: nodes.map(x=>x.value), sourceVersion:SOURCE_VERSION, sourceLines:SOURCE_LINES};
   }
 
   let preId = null;
-  let curId = headId;
-  let nextId = null;
-  record('var-init', 'var-init', `初始化指针 pre=null，cur=${curId}` , {preId,curId,nextId});
-
-  while (curId !== null) {
-    nextId = nodes.find(n => n.id === curId).next;
-    record('save-next', 'save-next', `暂存cur的后继 next=${nextId}`, {preId,curId,nextId});
-
-    // 反转箭头：cur指向pre
-    nodes.find(n => n.id === curId).next = preId;
-    record('turn-arrow', 'turn-arrow', `修改结点${curId}的next，指向pre=${preId}`, {preId,curId,nextId});
-
+  let curId = 0;
+  record('var-init','var-init',`pre=null, cur=${curId}` , {preId,curId});
+  while(curId !== null){
+    const nextId = nodes[curId].next;
+    record('loop','loop',`cur=${curId}, next=${nextId}，修改cur的next指向pre=${preId}`,{preId,curId,nextId});
+    nodes[curId].next = preId;
     preId = curId;
-    record('pre-move', 'pre-move', `pre指针前移到${preId}`, {preId,curId,nextId});
-
     curId = nextId;
-    record('cur-move', 'cur-move', `cur指针前移到${curId}`, {preId,curId,nextId});
   }
 
-  headId = preId;
-  record('return', 'return', `循环结束，新头结点是pre=${headId}`);
-  record('sorted', 'done', `反转完成，可遍历链表：${traverseLinkedList(headId, nodes)}`);
-  return steps;
+  const revValues = [];
+  let p = preId;
+  while(p!==null){
+    revValues.push(nodes[p].value);
+    p = nodes[p].next;
+  }
+  nodes = revValues.map((v,idx)=>({id:idx,value:v,next:idx+1<revValues.length?idx+1:null}));
+
+  record('sorted','done',`反转完成 [${revValues.join(',')}]`);
+  return {steps, result: revValues, sourceVersion:SOURCE_VERSION, sourceLines:SOURCE_LINES};
 }
 
-function traverseLinkedList(headId, allNodes) {
-  const res = [];
-  let p = headId;
-  while (p !== null) {
-    const nd = allNodes.find(x => x.id === p);
-    if (!nd) break;
-    res.push(nd.val);
-    p = nd.next;
-  }
-  return `[${res.join(',')}]`;
-}
