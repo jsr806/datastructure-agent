@@ -2,7 +2,7 @@
 
 根据实际 PR 和验收填写。负责人见[最终任务登记表](roster.md)，代表项和阶段标准见[最终任务清单](README.md)。
 
-更新：2026-11-17。集成基线为 main 的 `102e6c1`，包含 A 包与本次13项状态表接入。本轮 54 项演示中，A、B、C、D 四包及 G 包层序遍历合计 **29 项算法实现已合入 main，29项均已接入工作台**。加上原有二分查找和冒泡排序，共31项内置算法，自定义代码另计。新增13项使用状态表回放，25项尚待交付。正式图动画和各结构视图单独跟踪。
+更新：2026-11-18。集成基线为 main 的 `31a3839`，包含 [PR #70](https://github.com/tw1l1ghtcc/datastructure-agent/pull/70)。本轮 54 项演示中，A、B、C、D、G 五包共 **38 项算法实现已合入 main**，还有 16 项待交付。该基线的工作台已接入本轮 29 项。G 包工作台集成分支补齐其余 9 项入口与状态表，分支中共接入 40 项内置算法（含原有二分查找和冒泡排序，自定义代码另计）。
 
 这里按主分支记录；本地集成分支、未合并的 [PR #66](https://github.com/tw1l1ghtcc/datastructure-agent/pull/66) 中的示例与整程序引擎不计入已交付数。
 
@@ -17,4 +17,4 @@
 | 07 | D | 8 项：顺序查找、分块查找、AVL 树、红黑树、哈希线性探测、平方探测、双散列、拉链法（14 分） | 8 项算法已合并并接入工作台 | [#50](https://github.com/tw1l1ghtcc/datastructure-agent/pull/50)、[#52](https://github.com/tw1l1ghtcc/datastructure-agent/pull/52)、[#53](https://github.com/tw1l1ghtcc/datastructure-agent/pull/53) | D 包 9 项专项测试通过；顺序查找和分块查找已接入。AVL、红黑树和四种哈希已接入节点／槽位／桶链状态表；正式动画待接入 |
 | 08 | E | 单链表插入 | 已分配 | — | — |
 | 09 | F | KMP | 已分配 | — | — |
-| 10 | G | 10 项中的首个代表项：二叉树层序遍历 | 1 项算法已合并并通过模块复核，其余 9 项待交付 | [#64](https://github.com/tw1l1ghtcc/datastructure-agent/pull/64) | 01 复核提交 a410c37：静态检查、全仓 76 项测试通过；Open Watcom 编译、链接和默认树、空树、单节点、64 节点偏斜树实跑通过。此前 100 组生成树用例通过；工作台入口、队列及分层状态表已通过浏览器验收；树动画待联调。链接器有未用 Windows 库缺失警告，四组程序正常运行 |
+| 10 | G | 四种二叉树遍历、二叉树重建、线索化、树与森林转换及遍历、哈夫曼编码、二叉排序树 | 10 项算法已合并，层序遍历已在 main 接入，另 9 项在工作台集成分支接入 | [#64](https://github.com/tw1l1ghtcc/datastructure-agent/pull/64)、[#70](https://github.com/tw1l1ghtcc/datastructure-agent/pull/70) | [算法验收](g-validation.md)，集成分支用状态表回放，树动画待联调 |

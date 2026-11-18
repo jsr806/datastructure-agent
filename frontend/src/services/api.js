@@ -1,3 +1,5 @@
+import { BINARY_SEARCH_TREE_REPLAY_FORMAT, restoreBinarySearchTreeRun } from '../../../shared/algorithms/final/g/bst-replay.js';
+
 export async function requestJSON(path, { signal, body } = {}) {
   let response;
   try {
@@ -13,6 +15,9 @@ export async function requestJSON(path, { signal, body } = {}) {
   return data;
 }
 
-export function createRun(input, signal, algorithm = 'binary-search') {
-  return requestJSON(`/api/algorithms/${algorithm}/runs`, { body: input, signal });
+export async function createRun(input, signal, algorithm = 'binary-search') {
+  const run = await requestJSON(`/api/algorithms/${algorithm}/runs`, { body: input, signal });
+  if (algorithm !== 'binary-search-tree') return run;
+  if (run?.format !== BINARY_SEARCH_TREE_REPLAY_FORMAT) throw new Error('无法识别二叉排序树的回放格式。');
+  return restoreBinarySearchTreeRun(run);
 }

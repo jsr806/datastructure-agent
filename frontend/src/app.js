@@ -1,4 +1,7 @@
 import { createRun, requestJSON } from './services/api.js';
+import { gAlgorithm } from './features/workbench/g-algorithms.js';
+import { gVariableText } from './features/workbench/g-state.js';
+import { createGForm } from './features/workbench/g-form.js';
 import { createLevelOrderForm } from './features/workbench/level-order-form.js';
 import { stateText } from './features/workbench/c-algorithms.js';
 import { dataAlgorithm } from './features/workbench/data-algorithms.js';
@@ -29,8 +32,8 @@ const isSorting = () => SORT_ALGORITHMS.includes(selectedAlgorithm);
 const selectedGraph = () => graphAlgorithm(selectedAlgorithm);
 const isUnionFind = () => selectedAlgorithm === 'union-find';
 const selectedC = () => dataAlgorithm(selectedAlgorithm);
-const isLevelOrder = () => selectedAlgorithm === 'binary-tree-level-order';
-const structuredInput = () => Boolean(selectedGraph() || isUnionFind() || selectedC() || isLevelOrder());
+const selectedG = () => gAlgorithm(selectedAlgorithm);
+const structuredInput = () => Boolean(selectedGraph() || isUnionFind() || selectedC() || selectedG());
 const isCustom = () => selectedAlgorithm === 'custom-array';
 const customExample = `void sort(int a[], int n) {
   for (int end = n - 1; end > 0; end--) {
@@ -52,8 +55,8 @@ const speedMs = 1000;
 const graphForm = createGraphForm({ message, onChange: updateGraphDraft });
 const unionFindForm = createUnionFindForm({ message, onChange: updateGraphDraft });
 const cForm = createDataForm({ message, onChange: updateGraphDraft });
-const levelOrderForm = createLevelOrderForm({ message, onChange: updateGraphDraft });
-const runButtonLabel = () => structuredInput() ? (run ? '重新运行' : '运行 ' + (selectedC()?.title ?? (isLevelOrder() ? '层序遍历' : isUnionFind() ? '并查集' : selectedGraph().name))) : isCustom() ? '编译并运行' : '开始分析';
+const gForm = createGForm({ binaryForm: createLevelOrderForm({ message, onChange: updateGraphDraft }), message, onChange: updateGraphDraft });
+const runButtonLabel = () => structuredInput() ? (run ? '重新运行' : '运行 ' + (selectedG()?.title ?? selectedC()?.title ?? (isUnionFind() ? '并查集' : selectedGraph().name))) : isCustom() ? '编译并运行' : '开始分析';
 const ui = createWorkbenchUI({
   onNavigate(page, algorithm) {
     if (page !== 'workbench' && playback?.getState().playing) playback.pause();
@@ -133,9 +136,9 @@ function render(state) {
   viz.setStep(step, state);
   const v = step.variables;
   let values;
-  if (isLevelOrder()) {
-    const {currentNode,level,queue,order}=step.variables;
-    values=[currentNode??'—',level??'—',queue.map(entry=>entry.id+'（第'+entry.level+'层）').join('、')||'空',order.join(' → ')||'空'];
+  const g = selectedG();
+  if (g) {
+    values = g.fields.map(([key]) => gVariableText(g, key, v));
   } else if (selectedC()) {
     values = selectedC().fields.map(([key]) => stateText(step.variables[key]));
   } else if (isUnionFind()) {
@@ -217,7 +220,7 @@ async function start(event) {
   const algorithm = selectedAlgorithm;
   let input;
   try {
-    input = isLevelOrder() ? levelOrderForm.read() : selectedC() ? cForm.read() : isUnionFind() ? unionFindForm.read() : selectedGraph() ? graphForm.read() : parseInput($('arrInput').value, $('targetInput').value, algorithm);
+    input = selectedG() ? gForm.read() : selectedC() ? cForm.read() : isUnionFind() ? unionFindForm.read() : selectedGraph() ? graphForm.read() : parseInput($('arrInput').value, $('targetInput').value, algorithm);
   } catch (error) {
     message(error.message, true);
     return;
@@ -243,7 +246,7 @@ async function start(event) {
     playback=createPlayback({runId:run.runId,steps:run.steps,intervalMs:speedMs,onStepChange:render});
     render({...playback.getState(),step:run.steps[0]});
     if (structured) {
-      if (isLevelOrder()) levelOrderForm.summarize(run.input);
+      if (selectedG()) gForm.summarize(run.input);
       else if (selectedC()) cForm.summarize(run.input);
       else if (isUnionFind()) unionFindForm.summarize(run.input);
       else graphForm.summarize(run.graph);
@@ -263,34 +266,34 @@ function configureAlgorithm() {
   const search = arraySearch(selectedAlgorithm);
   const uf = isUnionFind();
   const c = selectedC();
-  const tree = isLevelOrder();
+  const g = selectedG();
   graphForm.setAlgorithm(graph);
   unionFindForm.setActive(uf);
   cForm.setAlgorithm(c);
-  levelOrderForm.setActive(tree);
+  gForm.setAlgorithm(g);
   $('run-form').hidden = false;
-  $('arrInput').closest('label').hidden = Boolean(graph || uf || c || tree);
-  $('input-help').hidden = Boolean(graph || uf || c || tree);
-  $('run-form').classList.toggle('bfs-input', Boolean(graph || uf || c || tree));
-  $('code-panel').classList.toggle('graph-workspace', Boolean(graph || uf || c || tree));
+  $('arrInput').closest('label').hidden = Boolean(graph || uf || c || g);
+  $('input-help').hidden = Boolean(graph || uf || c || g);
+  $('run-form').classList.toggle('bfs-input', Boolean(graph || uf || c || g));
+  $('code-panel').classList.toggle('graph-workspace', Boolean(graph || uf || c || g));
   $('code-panel').classList.toggle('floyd-workspace', selectedAlgorithm === 'floyd');
   const sortTitles = { 
     'bubble-sort': '冒泡排序', 'insertion-sort': '直接插入排序', 'binary-insertion-sort': '折半插入排序', 'shell-sort': '希尔排序', 
     'selection-sort': '简单选择排序', 'quick-sort': '快速排序', 'heap-sort': '堆排序', 'merge-sort': '归并排序' 
   };
-  $('workbench-footer-detail').textContent = tree ? '队列先进先出，左右孩子依次入队' : c ? '状态表与源码随真实步骤同步' : uf ? '每个元素的父节点指向自己时，它就是根' : graph ? '图结构和步骤来自本次运行' : '数组下标从 0 开始';
-  $('visualization-panel').setAttribute('aria-label', tree ? '二叉树层序遍历状态表' : c ? c.title + ' 执行状态表' : uf ? '并查集执行状态表' : graph ? graph.name + ' 执行过程，可用左右方向键单步操作' : '数组动画，可用左右方向键单步操作');
-  $('workbench-heading').textContent = (tree ? '二叉树层序遍历' : c?.title ?? (uf ? '并查集' : graph?.title)) ?? search?.title ?? (custom ? '自定义代码' : sorting ? sortTitles[selectedAlgorithm] : '二分查找');
-  $('source-file').textContent = tree ? 'binary_tree_level_order.cpp' : c ? selectedAlgorithm.replaceAll('-', '_') + '.cpp' : uf ? 'union_find.cpp' : graph ? selectedAlgorithm.replace('-', '_') + '.cpp' : search?.file ?? (custom ? '用户源码' : sorting ? selectedAlgorithm.replaceAll('-', '_') + '.cpp' : 'binary_search.cpp');
+  $('workbench-footer-detail').textContent = g || c ? '状态表与源码随真实步骤同步' : uf ? '每个元素的父节点指向自己时，它就是根' : graph ? '图结构和步骤来自本次运行' : '数组下标从 0 开始';
+  $('visualization-panel').setAttribute('aria-label', g || c ? (g ?? c).title + ' 执行状态表' : uf ? '并查集执行状态表' : graph ? graph.name + ' 执行过程，可用左右方向键单步操作' : '数组动画，可用左右方向键单步操作');
+  $('workbench-heading').textContent = (g?.title ?? c?.title ?? (uf ? '并查集' : graph?.title)) ?? search?.title ?? (custom ? '自定义代码' : sorting ? sortTitles[selectedAlgorithm] : '二分查找');
+  $('source-file').textContent = g || c ? selectedAlgorithm.replaceAll('-', '_') + '.cpp' : uf ? 'union_find.cpp' : graph ? selectedAlgorithm.replace('-', '_') + '.cpp' : search?.file ?? (custom ? '用户源码' : sorting ? selectedAlgorithm.replaceAll('-', '_') + '.cpp' : 'binary_search.cpp');
   $('array-label').textContent = selectedAlgorithm === 'block-search' ? '分块数组' : custom || search ? '输入数组' : sorting ? '待排序数组' : '有序数组';
   $('arrInput').value = '';
   $('arrInput').placeholder = search ? '例如：' + search.example : sorting || custom ? '例如：5, 1, 4, 2' : '例如：1, 3, 5, 7, 9';
-  $('target-field').hidden = sorting || custom || Boolean(graph) || uf || Boolean(c) || tree;
+  $('target-field').hidden = sorting || custom || Boolean(graph) || uf || Boolean(c || g);
   $('custom-code-fields').hidden = !custom;
   $('run-form').classList.toggle('sorting-input', sorting || custom);
   $('input-help').textContent = custom ? '本机 Windows 编译运行。最多 24 个 32 位整数，逗号分隔；留空为空数组。'
     : sorting ? '最多 24 个安全整数，逗号分隔；留空为空数组。允许负数和重复值。' : search?.help ?? binaryHelp;
-  let labels = tree ? ['当前节点','当前层号','队列（队首在左）','访问顺序'] : c ? c.fields.map(([, label]) => label) : uf ? ['当前操作', '查找路径', '集合数量', '失败操作数'] : graph ? graph.fields.map(([, label]) => label) : custom ? ['源码行', '写入下标', '写入值', '写入次数']
+  let labels = g || c ? (g ?? c).fields.map(([, label]) => label) : uf ? ['当前操作', '查找路径', '集合数量', '失败操作数'] : graph ? graph.fields.map(([, label]) => label) : custom ? ['源码行', '写入下标', '写入值', '写入次数']
     : selectedAlgorithm === 'block-search' ? ['当前块', '块最大值', '数组下标', '当前元素']
     : search ? ['当前下标', '当前元素', '目标值', '比较次数']
     : sorting ? ['轮次', 'i', 'i + 1', '已就位'] : ['left', 'right', 'mid', 'A[mid]'];
@@ -309,7 +312,7 @@ function configureAlgorithm() {
   algorithmMenu.setSelected(selectedAlgorithm);
   ui.setAlgorithm(selectedAlgorithm);
   clearRun();
-  if (!custom && !graph && !search && !uf && !c && !tree) exercises.setTopic(selectedAlgorithm);
+  if (!custom && !graph && !search && !uf && !c && !g) exercises.setTopic(selectedAlgorithm);
   message('');
 }
 function updateGraphDraft() {
@@ -329,7 +332,7 @@ function invalidateInput() {
 for (const id of ['arrInput','targetInput','code-input']) $(id).addEventListener('input', invalidateInput);
 $('code-language').addEventListener('change', invalidateInput);
 $('fillDemo').addEventListener('click', () => {
-  if(isLevelOrder()){updateGraphDraft();levelOrderForm.fillDemo();message('示例已填入，点「下一步」设置左右孩子。');return;}
+  if (selectedG()) { updateGraphDraft(); gForm.fillDemo(); return; }
   if (selectedC()) {
     updateGraphDraft(); cForm.fillDemo();
     message('示例已填入，可修改输入后运行。');

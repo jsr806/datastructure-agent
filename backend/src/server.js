@@ -1,3 +1,4 @@
+import { gAlgorithm } from '../../frontend/src/features/workbench/g-algorithms.js';
 import { dAlgorithm } from '../../frontend/src/features/workbench/d-algorithms.js';
 import { cAlgorithm } from '../../frontend/src/features/workbench/c-algorithms.js';
 import { arraySearch } from '../../frontend/src/features/workbench/array-search.js';
@@ -7,7 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { handleCreateRun, handleCreateSortRun, handleCreateBubbleRun, handleCreateUnionFindRun, handleCreateLevelOrderRun, handleCreateDRun, handleCreateCRun, handleCreateArraySearchRun, handleCreateGraphRun, handleGetRun, handleGetStep } from './routes/runs.js';
+import { handleCreateRun, handleCreateSortRun, handleCreateBubbleRun, handleCreateUnionFindRun, handleCreateGRun, handleCreateDRun, handleCreateCRun, handleCreateArraySearchRun, handleCreateGraphRun, handleGetRun, handleGetStep } from './routes/runs.js';
 import { handleGetExercises, handleCheckExercise } from './routes/exercises.js';
 import { getUsage } from './agent/rate-limit.js';
 import { knowledgeResponse } from './knowledge/retrieve.js';
@@ -16,6 +17,7 @@ import { createRun } from './runs/store.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const frontendRoot = resolve(here, '../../frontend');
+const bstReplayPath = '/shared/algorithms/final/g/bst-replay.js';
 const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.json': 'application/json', '.svg': 'image/svg+xml' };
 
 function json(response, code, value) {
@@ -59,7 +61,7 @@ const server = createServer(async (request, response) => {
     if (method === 'POST' && algorithmRunMatch) {
       const [, algorithm] = algorithmRunMatch;
       if(dAlgorithm(algorithm))return handleCreateDRun(response,await readBody(request),algorithm);
-      if (algorithm === 'binary-tree-level-order') return handleCreateLevelOrderRun(response, await readBody(request));
+      if (gAlgorithm(algorithm)) return handleCreateGRun(response, await readBody(request), algorithm);
       if (cAlgorithm(algorithm)) return handleCreateCRun(response, await readBody(request), algorithm);
       if (algorithm === 'union-find') return handleCreateUnionFindRun(response, await readBody(request));
       if (graphAlgorithm(algorithm)) return handleCreateGraphRun(response, await readBody(request), algorithm);
@@ -135,8 +137,10 @@ const server = createServer(async (request, response) => {
 
     if (pathname.startsWith('/api/')) return json(response, 404, { error: { code: 'NOT_FOUND', message: '接口不存在。' } });
     if (!['GET', 'HEAD'].includes(method)) return json(response, 405, { error: { code: 'METHOD_NOT_ALLOWED', message: '请求方法不支持。' } });
-    const file = resolve(frontendRoot, '.' + (pathname === '/' ? '/index.html' : pathname));
-    if (!file.startsWith(frontendRoot + sep)) return json(response, 403, { error: { code: 'FORBIDDEN', message: '路径不允许。' } });
+    const isReplayModule = pathname === bstReplayPath;
+    const file = isReplayModule ? resolve(here, '../..' + bstReplayPath)
+      : resolve(frontendRoot, '.' + (pathname === '/' ? '/index.html' : pathname));
+    if (!isReplayModule && !file.startsWith(frontendRoot + sep)) return json(response, 403, { error: { code: 'FORBIDDEN', message: '路径不允许。' } });
     const type = mime[extname(file)];
     if (!type) return json(response, 404, { error: { code: 'NOT_FOUND', message: '文件不存在。' } });
     try {

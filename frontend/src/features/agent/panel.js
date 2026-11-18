@@ -1,3 +1,5 @@
+import { gAlgorithm } from '../workbench/g-algorithms.js';
+
 const markup = `
 <header class="chat-header"><h2>步骤辅导</h2><span id="status-badge" class="badge mock">正在连接…</span><a href="/" class="back-link">返回工作台</a></header>
 <div id="current-step-label" class="current-step-label">先创建一次运行，再针对步骤提问。</div>
@@ -41,8 +43,10 @@ export function createAgentChat(container, { embedded = false, onBeforeSend = ()
     send.textContent = busy ? '等待回复…' : '发送';
     send.title = busy ? '回复完成后可发送下一条问题' : embedded && !context ? '请先运行算法' : '发送问题';
     question.disabled = false;
+    const g = gAlgorithm(context?.algorithm);
     question.placeholder = embedded && !context ? '可以先写问题，开始分析后再发送。'
       : context?.algorithm === 'binary-tree-level-order' ? '为什么这个节点先出队？'
+      : g ? g.prompt
       : context?.algorithm === 'union-find' ? '为什么这一步要修改父节点？'
       : context?.algorithm === 'linear-search' ? '目前比较到哪个元素了？'
       : context?.algorithm === 'block-search' ? '为什么选中这一块？'

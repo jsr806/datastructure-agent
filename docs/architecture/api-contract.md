@@ -13,11 +13,11 @@
 | POST /api/algorithms/bubble-sort/runs | 200，创建并返回冒泡排序 run | 01 |
 | POST /api/algorithms/{D包树或哈希算法}/runs | 200，创建树或哈希运行 | 01 |
 | POST /api/algorithms/{C包算法}/runs | 200，创建归并或多路查找树运行 | 01 |
-| POST /api/algorithms/binary-tree-level-order/runs | 200，创建二叉树层序遍历运行 | 01 |
+| POST /api/algorithms/{G包算法}/runs | 200，创建 G 包运行。二叉排序树返回紧凑回放 | 01 |
 | POST /api/algorithms/union-find/runs | 200，创建并查集运行 | 01 |
 | POST /api/algorithms/{图算法}/runs | 200，创建并返回图算法 run | 01 |
 | POST /api/algorithms/custom-array/runs | 本机 Windows，编译并执行自定义数组代码，200 返回实际执行 run | 01 |
-| GET /api/runs/:runId | 200，返回同一完整 run | 04 |
+| GET /api/runs/:runId | 200，返回与创建接口相同格式的 run | 04 |
 | GET /api/runs/:runId/steps/:stepIndex | 200，返回 `{runId,step}` | 04 |
 | GET /api/exercises | 200，返回 `{exercises:[...]}`；默认二分查找10题，可用 `topicId=bubble-sort` 读取冒泡排序10题，或 `topicId=all` 读取两个题库 | 04+06 |
 | POST /api/exercises/check | 200，程序判分及固定提示 | 04+07 |
@@ -56,6 +56,19 @@ D 包新增 `avl-tree`、`red-black-tree`、`hash-linear-probing`、`hash-quadra
 C 包运行标识为 `optimal-merge-tree`、`multiway-merge`、`replacement-selection`、`b-tree`、`b-plus-tree`。请求分别为 `{weights}`、`{runs,k}`、`{array,capacity}`、`{keys,queries,t}`、`{keys,queries}`。沿用 C 包现有上限及校验，见 [C 包接口](../../shared/algorithms/final/c/README.md)。运行保存输入快照 `input`，共用运行查询、步骤查询和问答接口。主工作台先展示状态表，树结构由引擎自动构建，动画待接入。
 
 二叉树层序遍历接受 `{root,nodes}`，每个节点为 `{id,left,right}`，最多 64 个唯一非空字符串 ID。孩子为空时使用 null，非空孩子须引用已定义的节点。空树为 `{root:null,nodes:[]}`。拒绝环、共享孩子及从根不可达的节点。运行保留输入快照 `input`，步骤与 G 包引擎一致，包含节点关系、FIFO 队列及层号（根为第 1 层）、当前节点、访问顺序和分层结果。主工作台使用节点、队列和分层状态表，支持单步、回看和问答；树形动画待接入。
+
+其余 G 包运行接口共用以下格式。创建成功保留输入快照 `input`。非法结构、超出算法上限或非法模式返回 400 INVALID_INPUT。各算法继续使用已合并的轨迹字段，见 [G 包算法验收](../team/final/g-validation.md)。
+
+| 算法标识 | 请求体 |
+| --- | --- |
+| `binary-tree-preorder`、`binary-tree-inorder`、`binary-tree-postorder`、`threaded-binary-tree` | `{root,nodes}`，节点表示与层序遍历相同 |
+| `binary-tree-reconstruction` | `{preorder,inorder}`，两个等长序列，每个序列最多 64 个不同节点 ID |
+| `tree-forest-conversion` | `{mode:"to-binary",roots,nodes}` 或 `{mode:"to-forest",root,nodes}` |
+| `tree-forest-traversal` | `{mode,roots,nodes}`，模式为 `preorder` 或 `postorder` |
+| `huffman-coding` | `{symbols:[{id,weight}]}`，最多 64 个唯一符号，权重为 1 到 2147483647 的整数 |
+| `binary-search-tree` | `{operations:[{type,key}]}`，类型为 `insert` 或 `search`，键为 32 位有符号整数，最多 128 次操作、64 个不同插入键 |
+
+森林节点为 `{id,children}`，根和孩子均按输入顺序排列，最多 64 个节点。二叉排序树的创建和整次查询返回 `format:"bst-replay-v1"`，`treeStates` 保存每次插入后的节点快照，传输步骤通过下标引用快照和操作路径。工作台用 `restoreBinarySearchTreeRun` 还原为标准步骤。单步查询和「问一步」直接使用服务端按同一轨迹还原的步骤。
 
 并查集接受 `{elements, operations}`，1 至 30 个唯一非空字符串元素，最多 60 个操作。操作格式为 `["union", x, y]` 或 `["find", x]`，引用未知元素时返回 400。空操作序列可运行。运行保存输入快照 `input`，步骤使用现有引擎的 `parent`、`rank`、`setCount`、`currentOp` 和 `findPath`。工作台使用父节点表，单步、回看、源码高亮和问答共用当前步骤；树形动画待接入。
 

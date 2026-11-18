@@ -136,12 +136,19 @@
           <ul id="algorithm-chapters" class="algorithm-menu-list" aria-label="算法章节" hidden></ul>
         </div>
       </header>
+      <div id="g-summary" class="uf-summary" hidden><p id="g-summary-text"></p><button id="g-edit" type="button" class="secondary" aria-controls="g-fields">编辑输入</button></div>
       <div id="tree-summary" class="uf-summary" hidden><p id="tree-summary-text"></p><button id="tree-edit" type="button" class="secondary">编辑输入</button></div>
       <div id="c-summary" class="uf-summary" hidden><p id="c-summary-text"></p><button id="c-edit" type="button" class="secondary">编辑输入</button></div>
       <div id="uf-summary" class="uf-summary" hidden><p id="uf-summary-text"></p><button id="uf-edit" type="button" class="secondary">编辑输入</button></div>
       <form id="run-form" class="input-panel" aria-label="创建算法运行">
         <label class="array-field" for="arrInput"><span id="array-label">有序数组</span><input id="arrInput" name="array" type="text" autocomplete="off" placeholder="例如：1, 3, 5, 7, 9" aria-describedby="input-help msgBox"></label>
         <label id="target-field" for="targetInput">目标值<input id="targetInput" name="target" type="text" inputmode="numeric" autocomplete="off" placeholder="例如：7" aria-describedby="msgBox"></label>
+        <label id="g-mode-field" for="g-mode" hidden>执行方式<select id="g-mode"></select></label>
+        <div id="g-fields" hidden>
+          <label for="g-primary"><span id="g-primary-label"></span><textarea id="g-primary" spellcheck="false" aria-describedby="g-help"></textarea></label>
+          <label id="g-secondary-field" for="g-secondary"><span id="g-secondary-label"></span><textarea id="g-secondary" rows="4" spellcheck="false" aria-describedby="g-help"></textarea></label>
+          <p id="g-help" class="muted"></p>
+        </div>
         <div id="tree-fields" hidden>
           <section id="tree-node-step">
             <label for="tree-nodes">第 1 步 · 填写节点<input id="tree-nodes" placeholder="例如：A, B, C, D" autocomplete="off"></label>
@@ -150,7 +157,7 @@
           </section>
           <section id="tree-child-step" hidden>
             <label for="tree-root">第 2 步 · 选择根节点<select id="tree-root"></select></label>
-            <p class="muted">为每个节点选择左右孩子，空孩子留空。所有节点须能从根到达，不能有环或共享孩子。</p>
+            <p id="tree-links-help" class="muted">为每个节点选择左右孩子，空孩子留空。所有节点须能从根到达，不能有环或共享孩子。</p>
             <div id="tree-children"></div>
             <button id="tree-back" type="button" class="secondary">上一步</button>
           </section>

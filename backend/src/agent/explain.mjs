@@ -1,3 +1,5 @@
+import { gAlgorithm } from '../../../frontend/src/features/workbench/g-algorithms.js';
+import { gVariableText } from '../../../frontend/src/features/workbench/g-state.js';
 import { dataAlgorithm as cAlgorithm } from '../../../frontend/src/features/workbench/data-algorithms.js';
 import { arraySearch } from '../../../frontend/src/features/workbench/array-search.js';
 import { graphAlgorithm } from '../../../frontend/src/features/workbench/graph-algorithms.js';
@@ -87,10 +89,11 @@ async function explain(parsedBody, ctx = {}) {
   const graph = graphAlgorithm(run.algorithm);
   const search = arraySearch(run.algorithm);
   const c = cAlgorithm(run.algorithm);
-  const tree=run.algorithm==='binary-tree-level-order';
+  const g = gAlgorithm(run.algorithm);
+  const tree = run.algorithm === 'binary-tree-level-order';
   const bst = run.algorithm === 'binary-search-tree';
   const uf = run.algorithm === 'union-find';
-  const stepRefs = uf || c || tree || bst
+  const stepRefs = uf || c || g
     ? [{ runId, stepIndex: idx, algorithm: run.algorithm, event: ev, variables: step.variables }]
     : search
     ? [{ runId, stepIndex: idx, algorithm: run.algorithm, event: ev, target, array: arr, variables: step.variables }]
@@ -143,7 +146,14 @@ async function explain(parsedBody, ctx = {}) {
     answer=prefix+'层序遍历第 '+(stepNo+1)+' 步。'+step.description;
     if(level>=2)answer+=' 当前队列（队首在左）：'+(step.variables.queue.map(entry=>entry.id+'（第'+entry.level+'层）').join('、')||'空')+'。';
     if(level===3 && steps[idx+1])answer+=' 下一步：'+steps[idx+1].description;
-  }else if (c) {
+  } else if (g) {
+    answer = prefix + g.title + '第 ' + (stepNo + 1) + ' 步。' + step.description;
+    if (level >= 2) {
+      const details = g.fields.map(([key, label]) => label + '：' + gVariableText(g, key, step.variables));
+      answer += ' ' + details.join('；') + '。';
+    }
+    if (level === 3 && steps[idx + 1]) answer += ' 下一步：' + steps[idx + 1].description;
+  } else if (c) {
     answer = prefix + c.title + '第 ' + (stepNo + 1) + ' 步。' + step.description;
     if (level >= 2) answer += ' 当前状态：' + JSON.stringify(step.variables);
     if (level === 3 && steps[idx + 1]) answer += ' 下一步：' + steps[idx + 1].description;
