@@ -1,42 +1,28 @@
 // shared/algorithms/final/e/kth-from-end.js
-const SOURCE_VERSION = 'kth-end-c-v1';
+const SOURCE_VERSION = 'kth-from-end-c-v1';
 const SOURCE_LINES = [
-  { lineId: 'init', text: 'Node* kth_from_end(Node* head, int k) {' },
-  { lineId: 'k-check', text: '  if (k <= 0) return NULL;' },
-  { lineId: 'fast-init', text: '  Node* fast = head; Node* slow = head;' },
-  { lineId: 'fast-move', text: '  for(int i=0; i<k; i++) {' },
-  { lineId: 'fast-null', text: '    if (fast == NULL) return NULL;' },
-  { lineId: 'fast-next', text: '    fast = fast->next;' },
-  { lineId: 'both-move', text: '  while(fast != NULL) {' },
-  { lineId: 'slow-next', text: '    slow = slow->next; fast = fast->next;' },
-  { lineId: 'return', text: '  return slow;' },
+  { lineId: 'init', text: 'ListNode* findKthFromEnd(ListNode* head, int k) {' },
+  { lineId: 'check-k', text: '  if(k<=0) return nullptr;' },
+  { lineId: 'fast-init', text: '  ListNode *fast=head,*slow=head;' },
+  { lineId: 'fast-forward', text: '  for(int i=0;i<k;i++){ if(!fast) return nullptr; fast=fast->next; }' },
+  { lineId: 'both-walk', text: '  while(fast){ fast=fast->next; slow=slow->next; }' },
+  { lineId: 'return-res', text: '  return slow;' },
   { lineId: 'done', text: '}' },
 ];
 
 /**
- * 构造链表结点数组
- * @param {number[]} arr
- * @returns {{val:number,id:number,next:number|null}[]}
- */
-function buildLinkedNodes(arr) {
-  const nodes = arr.map((v, idx) => ({ val: v, id: idx, next: idx + 1 }));
-  if (nodes.length > 0) nodes[nodes.length - 1].next = null;
-  return nodes;
-}
-
-/**
- * 单链表倒数第k个结点轨迹生成（快慢指针）
- * @param {{list: number[], k: number}} input
- * @returns {Array} steps
+ * 单链表查找倒数第k节点
+ * @param {{list:number[],k:number}} input
+ * @returns {{steps:any[],result:{nodeId:number|null,value:number|null},sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
  */
 export function generateKthFromEndSteps(input) {
   const { list, k } = input;
   const steps = [];
-  let nodes = buildLinkedNodes(list);
-  let headId = nodes.length === 0 ? null : 0;
+  let nodes = list.map((val, idx) => ({ id: idx, value: val, next: idx + 1 < list.length ? idx + 1 : null }));
 
   function record(event, lineId, description, extraVars = {}) {
-    const done = event === 'sorted';
+    const done = event === 'sorted' || event === 'error';
+    const nodesSnap = JSON.parse(JSON.stringify(nodes));
     steps.push({
       schemaVersion: '1.0',
       algorithm: 'kth-from-end',
@@ -44,51 +30,43 @@ export function generateKthFromEndSteps(input) {
       sourceVersion: SOURCE_VERSION,
       event,
       lineId,
-      array: list,
-      variables: {
-        headId,
-        k,
-        nodes: JSON.parse(JSON.stringify(nodes)),
-        ...extraVars,
-      },
+      array: nodesSnap.map(x=>x.value),
+      variables: { nodes: nodesSnap, ...extraVars },
       description,
       done,
-      result: done ? JSON.parse(JSON.stringify(nodes)) : null,
+      result: done ? JSON.parse(JSON.stringify(extraVars.retResult ?? {nodeId:null,value:null})) : null
     });
   }
 
-  record('init', 'init', `初始链表 [${list.join(',')}]，查找倒数第${k}个结点`);
+  record('init', 'init', `链表 [${list.join(',')}]，查找倒数第${k}个结点`);
 
-  if (k <= 0) {
-    record('k-check', 'k-check', `k=${k}非法，k必须大于0`);
-    record('sorted', 'done', '查找终止：k非法');
-    return steps;
+  if (!Number.isInteger(k) || k <= 0) {
+    record('error', 'check-k', `k=${k}非法，k必须是正整数`, { retResult:{nodeId:null,value:null} });
+    return { steps, result:{nodeId:null,value:null}, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+  }
+  if(k > nodes.length){
+    record('error','check-k',`k=${k}超过链表长度${nodes.length}`,{retResult:{nodeId:null,value:null}});
+    return { steps, result:{nodeId:null,value:null}, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
   }
 
-  let fastId = headId;
-  let slowId = headId;
-  record('fast-init', 'fast-init', `初始化 fast=${fastId}, slow=${slowId}`, { fastId, slowId });
+  let fastId = 0;
+  let slowId = 0;
+  record('fast-init', 'fast-init', `fast、slow指向头结点 id=${fastId}`, { fastId, slowId });
 
-  // 快指针先走k步
-  for (let i = 0; i < k; i++) {
-    if (fastId === null) {
-      record('fast-null', 'fast-null', `快指针在第${i}步已到表尾，链表长度不足k，无此结点`);
-      record('sorted', 'done', '查找终止：链表长度小于k');
-      return steps;
-    }
-    fastId = nodes.find(n => n.id === fastId).next;
-    record('fast-next', 'fast-next', `快指针前进一步，fast=${fastId}`, { fastId, slowId });
+  for(let i=0;i<k;i++){
+    record('fast-forward','fast-forward',`fast指针向前走一步，i=${i}`,{fastId,slowId});
+    fastId = nodes[fastId].next;
   }
 
-  // 双指针同步走
-  while (fastId !== null) {
-    slowId = nodes.find(n => n.id === slowId).next;
-    fastId = nodes.find(n => n.id === fastId).next;
-    record('slow-next', 'slow-next', `快慢指针同步后移：slow=${slowId}, fast=${fastId}`, { fastId, slowId });
+  while(fastId !== null){
+    fastId = nodes[fastId].next;
+    slowId = nodes[slowId].next;
+    record('both-walk','both-walk',`fast与slow同步向后移动`,{fastId,slowId});
   }
 
-  const resultNode = nodes.find(n => n.id === slowId);
-  record('return', 'return', `fast到达表尾，slow指向目标结点 id=${slowId}, val=${resultNode ? resultNode.val : null}`);
-  record('sorted', 'done', `倒数第${k}个结点值为：${resultNode ? resultNode.val : '不存在'}`);
-  return steps;
+  const retResult = { nodeId: slowId, value: nodes[slowId].value };
+  record('return-res','return-res',`fast到达末尾，slow指向目标节点 id=${slowId}, value=${retResult.value}`,{fastId,slowId,retResult});
+  record('sorted','done',`倒数第${k}个节点值为：${retResult.value}`,{retResult});
+
+  return { steps, result: retResult, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
 }
