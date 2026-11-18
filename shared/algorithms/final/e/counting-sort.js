@@ -48,10 +48,17 @@ export function generateCountingSortSteps(input) {
   }
 
   record('init', 'init', `待排序数组 [${arr.join(',')}]，开始稳定计数排序`);
-  if (n <= 1) {
-    record('sorted', 'done', `数组长度${n}，无需排序：[${arr.join(',')}]`);
-    return { steps, result: [...arr], sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
-  }
+  //第一步：先校验全部元素是整数，放在最前面
+if (!arr.every(x => Number.isInteger(x))) {
+  record('error', 'alloc-count', '存在非整数元素，计数排序终止');
+  return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+}
+//再处理空数组、单元素
+if (n <= 1) {
+  record('sorted', 'done', `数组长度${n}，无需排序：[${arr.join(',')}]`);
+  return { steps, result: [...arr], sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+}
+
 
   let minv = arr[0];
   let maxv = arr[0];
