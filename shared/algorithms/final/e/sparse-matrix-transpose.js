@@ -15,7 +15,7 @@ const SOURCE_LINES = [
 ];
 
 /**
- * 稀疏矩阵快速转置【二次复审修复版】
+ * 稀疏矩阵快速转置【二次复审完整版】
  * @param {{rows: number, cols: number, triples: {i:number,j:number,e:number}[]}} input
  * @returns {{steps:any[],result:{mu:number,nu:number,tu:number,data:{i:number,j:number,e:number}[]}|null,sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
  */
@@ -40,14 +40,12 @@ export function generateSparseMatrixTransposeSteps(input) {
       variables: { A: Asnap, B: Bsnap, ...extraVars },
       description,
       done,
-      // 二次复审：error帧result置null，与顶层返回保持一致
       result: done ? (event === 'error' ? null : JSON.parse(JSON.stringify(Bsnap))) : null
     });
   }
 
   record('init', 'init', `原始矩阵 ${A.mu}行${A.nu}列，非零元${A.tu}`);
 
-  // 行列基础校验
   if(!Number.isInteger(rows)||!Number.isInteger(cols)||rows<=0||cols<=0){
     record('error','init','行列数必须正整数');
     return {steps,result:null,sourceVersion:SOURCE_VERSION,sourceLines:SOURCE_LINES};
@@ -55,7 +53,6 @@ export function generateSparseMatrixTransposeSteps(input) {
 
   const seen = new Set();
   for(const t of A.data){
-    // 新增：校验i、j必须为整数（二次复审）
     if(!Number.isInteger(t.i) || !Number.isInteger(t.j)){
       record('error','init','三元组i、j必须为整数');
       return {steps,result:null,sourceVersion:SOURCE_VERSION,sourceLines:SOURCE_LINES};
@@ -76,7 +73,6 @@ export function generateSparseMatrixTransposeSteps(input) {
     seen.add(key);
   }
 
-  // 新增：乱序三元组行优先规范化排序（二次复审）
   A.data.sort((a,b)=>{
     if(a.i !== b.i) return a.i - b.i;
     return a.j - b.j;
