@@ -1,121 +1,65 @@
 // shared/algorithms/final/e/singly-linked-list-delete.js
-const SOURCE_VERSION = 'singly-delete-c-v1';
+const SOURCE_VERSION = 'singly-linked-delete-c-v1';
 const SOURCE_LINES = [
-  { lineId: 'init', text: 'Node* list_delete(Node* head, int pos) {' },
-  { lineId: 'empty-check', text: '  if (head == NULL) return NULL;' },
-  { lineId: 'pos-check', text: '  if (pos == 0) {' },
-  { lineId: 'head-del', text: '    Node* delp = head; head = head->next; delete delp; return head;' },
-  { lineId: 'find-pre', text: '  Node* p = head; for(int i=0; i<pos-1; i++) p = p->next;' },
-  { lineId: 'mark-del', text: '  Node* delp = p->next;' },
-  { lineId: 'skip-del', text: '  p->next = delp->next;' },
-  { lineId: 'free-del', text: '  delete delp;' },
-  { lineId: 'return', text: '  return head;' },
+  { lineId: 'init', text: 'int list_delete(ListNode* &head, int pos) {' },
+  { lineId: 'check-pos', text: '  if(pos<0 || !head) return -1;' },
+  { lineId: 'del-head', text: '  if(pos==0){ ListNode* p=head; head=head->next; delete p; return 0; }' },
+  { lineId: 'find-pre', text: '  ListNode* cur=head; for(int i=0;i<pos-1;i++){ if(!cur->next) return -1; cur=cur->next; }' },
+  { lineId: 'del-link', text: '  ListNode* p=cur->next; cur->next = p->next; delete p; return 0;' },
   { lineId: 'done', text: '}' },
 ];
 
 /**
- * 构造链表结点数组，方便前端渲染
- * @param {number[]} arr
- * @returns {{val:number,id:number,next:number|null}[]}
+ * 单链表按位置删除 二次复审修复版
+ * @param {{list:number[],pos:number}} input
+ * @returns {{steps:any[],result:number[]|null,sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
  */
-function buildLinkedNodes(arr) {
-  const nodes = arr.map((v, idx) => ({ val: v, id: idx, next: idx + 1 }));
-  if (nodes.length > 0) nodes[nodes.length - 1].next = null;
-  return nodes;
-}
-
-/**
- * 单链表删除轨迹生成
- * @param {{list: number[], pos: number}} input
- * @returns {Array} steps
- */
-export function generateSinglyLinkedDeleteSteps(input) {
+export function generateSinglyLinkedListDeleteSteps(input) {
   const { list, pos } = input;
   const steps = [];
-  let nodes = buildLinkedNodes(list);
-  let headId = nodes.length === 0 ? null : 0;
+  let nodes = list.map((v,id)=>({id,value:v,next:id+1<list.length?id+1:null}));
 
-  function record(event, lineId, description, extraVars = {}) {
-    const done = event === 'sorted';
+  function record(event, lineId, description, extraVars={}){
+    const done = event==='sorted'||event==='error';
+    const snapNodes = JSON.parse(JSON.stringify(nodes));
     steps.push({
-      schemaVersion: '1.0',
-      algorithm: 'singly-linked-list-delete',
-      stepIndex: steps.length,
-      sourceVersion: SOURCE_VERSION,
+      schemaVersion:'1.0',
+      algorithm:'singly-linked-list-delete',
+      stepIndex:steps.length,
+      sourceVersion:SOURCE_VERSION,
       event,
       lineId,
-      array: list,
-      variables: {
-        headId,
-        pos,
-        nodes: JSON.parse(JSON.stringify(nodes)),
-        ...extraVars,
-      },
+      array: snapNodes.map(x=>x.value),
+      variables:{ nodes:snapNodes, pos, ...extraVars },
       description,
       done,
-      result: done ? JSON.parse(JSON.stringify(nodes)) : null,
+      result: done ? (event === 'error' ? null : JSON.parse(JSON.stringify(snapNodes.map(x=>x.value)))) : null
     });
   }
 
-  record('init', 'init', `初始链表 [${list.join(',')}]，准备删除位置${pos}的结点`);
+  record('init','init',`原始链表 [${list.join(',')}]，删除pos=${pos}`);
 
-  // 空链表
-  if (nodes.length === 0) {
-    record('empty-check', 'empty-check', '链表为空，无需删除');
-    record('sorted', 'done', '删除终止：链表为空');
-    return steps;
+  if(!Number.isInteger(pos) || pos<0 || pos >= nodes.length){
+    record('error','check-pos',`pos=${pos}非法越界，需要合法整数下标`);
+    return {steps,result:null,sourceVersion:SOURCE_VERSION,sourceLines:SOURCE_LINES};
   }
 
-  // 位置越界判断
-  if (pos < 0 || pos >= nodes.length) {
-    record('reject', 'init', `删除位置${pos}越界，合法范围0~${nodes.length - 1}，拒绝操作`);
-    record('sorted', 'done', '删除终止：位置非法');
-    return steps;
-  }
-
-  if (pos === 0) {
-    // 删除头结点
-    const delId = headId;
-    record('head-del', 'head-del', `删除头结点 id=${delId}, val=${nodes.find(n=>n.id===delId).val}`);
-    headId = nodes.find(n => n.id === delId).next;
-    // 删掉这个节点
-    nodes = nodes.filter(n => n.id !== delId);
-  } else {
-    // 找前驱
-    let preId = 0;
-    let cur = nodes.find(n => n.id === preId);
-    for (let i = 0; i < pos - 1; i++) {
-      preId = cur.next;
-      cur = nodes.find(n => n.id === preId);
+  if(pos === 0){
+    record('del-head','del-head','删除头结点');
+    nodes.shift();
+  }else{
+    let curId = 0;
+    for(let i=0;i<pos-1;i++){
+      record('find-pre','find-pre',`寻找前驱 i=${i}, curId=${curId}`);
+      curId = nodes[curId].next;
     }
-    record('find-pre', 'find-pre', `找到前驱结点 id=${preId}`);
-
-    const delId = cur.next;
-    const delNode = nodes.find(n => n.id === delId);
-    record('mark-del', 'mark-del', `标记待删结点 id=${delId}, val=${delNode.val}`);
-
-    // 前驱跳过待删节点
-    cur.next = delNode.next;
-    record('skip-del', 'skip-del', `前驱结点${preId}的next指向待删结点的后继 ${delNode.next}`);
-
-    // 移除节点（释放）
-    nodes = nodes.filter(n => n.id !== delId);
-    record('free-del', 'free-del', `释放结点 id=${delId}`);
+    record('del-link','del-link',`删除curId=${curId}的后继节点`);
+    nodes.splice(curId+1,1);
   }
+  for(let i=0;i<nodes.length;i++) nodes[i].id = i;
+  for(let i=0;i<nodes.length-1;i++) nodes[i].next = i+1;
+  if(nodes.length>0) nodes[nodes.length-1].next = null;
 
-  record('return', 'return', '链表删除逻辑执行完毕');
-  record('sorted', 'done', `删除完成，可遍历链表：${traverseLinkedList(headId, nodes)}`);
-  return steps;
-}
-
-function traverseLinkedList(headId, allNodes) {
-  const res = [];
-  let p = headId;
-  while (p !== null) {
-    const nd = allNodes.find(x => x.id === p);
-    if (!nd) break;
-    res.push(nd.val);
-    p = nd.next;
-  }
-  return `[${res.join(',')}]`;
+  record('sorted','done',`删除完成，链表 [${nodes.map(x=>x.value).join(',')}]`);
+  return {steps, result: nodes.map(x=>x.value), sourceVersion:SOURCE_VERSION, sourceLines:SOURCE_LINES};
 }
