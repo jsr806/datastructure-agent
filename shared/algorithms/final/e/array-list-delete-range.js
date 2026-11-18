@@ -10,7 +10,7 @@ const SOURCE_LINES = [
 ];
 
 /**
- * 顺序表闭区间[left,right]删除
+ * 顺序表闭区间[left,right]删除，修复record result契约
  * @param {{list:number[],left:number,right:number}} input
  * @returns {{steps:any[],result:number[]|null,sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
  */
@@ -42,7 +42,7 @@ export function generateArrayListDeleteRangeSteps(input) {
       },
       description,
       done,
-      result: done ? JSON.parse(JSON.stringify(arr.slice(0, len))) : null
+      result: done ? (event === 'error' ? null : JSON.parse(JSON.stringify(arrSnap.slice(0, len)))) : null
     });
   }
 
@@ -71,3 +71,5 @@ export function generateArrayListDeleteRangeSteps(input) {
   const finalRes = JSON.parse(JSON.stringify(arr.slice(0, len)));
   return { steps, result: finalRes, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
 }
+
+
