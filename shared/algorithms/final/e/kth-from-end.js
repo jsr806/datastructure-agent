@@ -5,10 +5,10 @@ const NO_RESULT = Symbol('no-result');
 const SOURCE_LINES = [
   { lineId: 'struct', text: 'struct Node { int value; Node* next; };' },
   { lineId: 'init', text: 'int kth_from_end(Node* head, int k) {' },
-  { lineId: 'check', text: '  if(k <= 0 || head == NULL) return -1;' },
+  { lineId: 'check', text: '  if(k <= 0 || head == 0) return -1;' },
   { lineId: 'fast', text: '  Node* fast = head; Node* slow = head;' },
-  { lineId: 'fast-forward', text: '  for(int i=0;i<k;i++){ if(fast == NULL) return -1; fast = fast->next; }' },
-  { lineId: 'move-both', text: '  while(fast != NULL){ fast = fast->next; slow = slow->next; }' },
+  { lineId: 'fast-forward', text: '  for(int i=0;i<k;i++){ if(fast == 0) return -1; fast = fast->next; }' },
+  { lineId: 'move-both', text: '  while(fast != 0){ fast = fast->next; slow = slow->next; }' },
   { lineId: 'done', text: '  return slow ? slow->value : -1;' },
   { lineId: 'close', text: '}' },
 ];
@@ -64,7 +64,7 @@ export function generateKthFromEndSteps({ list, k }) {
   record(
     'fast_forward',
     'fast-forward',
-    `快指针先走 ${k} 步：fast=${fastId === null ? 'NULL' : fastId}，slow=${slowId}`,
+    `快指针先走 ${k} 步：fast=${fastId === null ? '0' : fastId}，slow=${slowId}`,
     { fastId, slowId }
   );
 
@@ -76,7 +76,7 @@ export function generateKthFromEndSteps({ list, k }) {
     record(
       'move_both',
       'move-both',
-      `快慢指针同步后移：fast=${fastId === null ? 'NULL' : fastId}，slow=${slowId === null ? 'NULL' : slowId}`,
+      `快慢指针同步后移：fast=${fastId === null ? '0' : fastId}，slow=${slowId === null ? '0' : slowId}`,
       { fastId, slowId }
     );
   }
