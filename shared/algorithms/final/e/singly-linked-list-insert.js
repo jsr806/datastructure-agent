@@ -6,10 +6,10 @@ const SOURCE_LINES = [
   { lineId: 'struct', text: 'struct Node { int value; Node* next; };' },
   { lineId: 'init', text: 'Node* list_insert(Node* head, int pos, int value) {' },
   { lineId: 'check', text: '  if(pos < 0) return head;   /* pos 必须是非负整数，且不超过表长 */' },
-  { lineId: 'create', text: '  Node* newNode = new Node(); newNode->value = value; newNode->next = NULL;' },
+  { lineId: 'create', text: '  Node* newNode = new Node(); newNode->value = value; newNode->next = 0;' },
   { lineId: 'link-head', text: '  if(pos == 0){ newNode->next = head; return newNode; }' },
-  { lineId: 'find-prev', text: '  Node* prev = head; for(int i=0;i<pos-1;i++){ if(prev == NULL) return head; prev = prev->next; }' },
-  { lineId: 'link-mid', text: '  if(prev == NULL) return head; newNode->next = prev->next; prev->next = newNode;' },
+  { lineId: 'find-prev', text: '  Node* prev = head; for(int i=0;i<pos-1;i++){ if(prev == 0) return head; prev = prev->next; }' },
+  { lineId: 'link-mid', text: '  if(prev == 0) return head; newNode->next = prev->next; prev->next = newNode;' },
   { lineId: 'done', text: '  return head;' },
   { lineId: 'close', text: '}' },
 ];
@@ -78,7 +78,7 @@ export function generateSinglyLinkedInsertSteps({ list, pos, value }) {
     record(
       'link_head_insert',
       'link-head',
-      `头插：新节点 ${newNodeId} 的 next 指向原头节点 ${oldHeadId === null ? 'NULL' : oldHeadId}`
+      `头插：新节点 ${newNodeId} 的 next 指向原头节点 ${oldHeadId === null ? '0' : oldHeadId}`
     );
   } else {
     let currId = headId;
