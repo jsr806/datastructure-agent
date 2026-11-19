@@ -5,8 +5,8 @@ const NO_RESULT = Symbol('no-result');
 const SOURCE_LINES = [
   { lineId: 'struct', text: 'struct Node { int value; Node* next; };' },
   { lineId: 'init', text: 'Node* list_reverse(Node* head) {' },
-  { lineId: 'reverse-init', text: '  Node* prev = NULL; Node* curr = head;' },
-  { lineId: 'reverse-loop', text: '  while(curr != NULL){ Node* nxt = curr->next;' },
+  { lineId: 'reverse-init', text: '  Node* prev = 0; Node* curr = head;' },
+  { lineId: 'reverse-loop', text: '  while(curr != 0){ Node* nxt = curr->next;' },
   { lineId: 'reverse-link', text: '    curr->next = prev; prev = curr; curr = nxt; }' },
   { lineId: 'done', text: '  return prev;' },
   { lineId: 'close', text: '}' },
@@ -71,7 +71,7 @@ export function generateSinglyLinkedListReverseSteps({ list }) {
     record(
       'reverse_link',
       'reverse-link',
-      `第 ${round} 步：节点 ${currId}（value=${currNode.value}）的 next 由 ${nextSaveId === null ? 'NULL' : nextSaveId} 改为 ${prevId === null ? 'NULL' : prevId}`,
+      `第 ${round} 步：节点 ${currId}（value=${currNode.value}）的 next 由 ${nextSaveId === null ? '0' : nextSaveId} 改为 ${prevId === null ? '0' : prevId}`,
       { headId: currId, prevId, currId, nextId: nextSaveId }
     );
     prevId = currId;
@@ -83,7 +83,7 @@ export function generateSinglyLinkedListReverseSteps({ list }) {
   record(
     'done',
     'done',
-    `逆置完成，新头节点 headId=${headId === null ? 'NULL' : headId}，节点 id 与 value 一一对应，链为 [${finalResult.join(',')}]`,
+    `逆置完成，新头节点 headId=${headId === null ? '0' : headId}，节点 id 与 value 一一对应，链为 [${finalResult.join(',')}]`,
     {},
     finalResult
   );
