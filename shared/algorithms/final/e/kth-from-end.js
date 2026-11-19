@@ -1,66 +1,94 @@
-// kth-from-end.js
-const sourceVersion = "e-package-v3-fix";
-const sourceLines = "1-110";
+// shared/algorithms/final/e/kth-from-end.js
+const SOURCE_VERSION = 'kth-from-end-c-v1';
+const NO_RESULT = Symbol('no-result');
 
+const SOURCE_LINES = [
+  { lineId: 'struct', text: 'struct Node { int value; Node* next; };' },
+  { lineId: 'init', text: 'int kth_from_end(Node* head, int k) {' },
+  { lineId: 'check', text: '  if(k <= 0 || head == NULL) return -1;' },
+  { lineId: 'fast', text: '  Node* fast = head; Node* slow = head;' },
+  { lineId: 'fast-forward', text: '  for(int i=0;i<k;i++){ if(fast == NULL) return -1; fast = fast->next; }' },
+  { lineId: 'move-both', text: '  while(fast != NULL){ fast = fast->next; slow = slow->next; }' },
+  { lineId: 'done', text: '  return slow ? slow->value : -1;' },
+  { lineId: 'close', text: '}' },
+];
+
+/**
+ * 倒数第 k 个节点：快慢指针；错误分支顶层 result 与末步 result 结构完全一致
+ * @param {{list:number[],k:number}} input
+ * @returns {{steps:any[],result:{nodeId:number|null,value:number|null},sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
+ */
 export function generateKthFromEndSteps({ list, k }) {
-    const steps = [];
-    let autoId = 0;
-    const nodes = list.map(v => ({ id: autoId++, value: v, next: null }));
-    for (let i = 0; i < nodes.length - 1; i++) {
-        nodes[i].next = nodes[i + 1].id;
-    }
-    let headId = nodes[0].id;
+  const steps = [];
+  const input = Array.isArray(list) ? [...list] : [];
+  let autoId = 0;
+  const nodes = input.map((v) => ({ id: autoId++, value: v, next: null }));
+  for (let i = 0; i < nodes.length - 1; i++) {
+    nodes[i].next = nodes[i + 1].id;
+  }
+  let headId = nodes.length ? nodes[0].id : null;
+  const clone = (o) => JSON.parse(JSON.stringify(o));
 
+  function record(event, lineId, description, vars = {}, finalResult = NO_RESULT) {
+    const done = finalResult !== NO_RESULT;
+    const nodesSnap = clone(nodes);
     steps.push({
-        event: "init",
-        variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId }
+      schemaVersion: '1.0',
+      algorithm: 'kth-from-end',
+      stepIndex: steps.length,
+      sourceVersion: SOURCE_VERSION,
+      event,
+      lineId,
+      nodes: nodesSnap,
+      variables: { nodes: nodesSnap, headId, ...clone(vars) },
+      description,
+      done,
+      result: done ? clone(finalResult) : null,
     });
+  }
 
-    if (!Number.isInteger(k) || k <= 0 || k > list.length) {
-        const errResult = { nodeId: null, value: null };
-        steps.push({
-            event: "error",
-            variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId },
-            result: errResult
-        });
-        return {
-            steps,
-            result: errResult,
-            sourceVersion,
-            sourceLines
-        };
-    }
+  record('init', 'init', `链表 [${input.join(',')}]，查找倒数第 ${k} 个节点`);
 
-    let fastId = headId;
-    let slowId = headId;
-    for (let s = 0; s < k; s++) {
-        const nd = nodes.find(x => x.id === fastId);
-        fastId = nd.next;
-    }
-    steps.push({
-        event: "fast_forward",
-        variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId, fastId, slowId }
-    });
+  if (!Number.isInteger(k) || k <= 0 || k > input.length) {
+    const errResult = { nodeId: null, value: null };
+    record('error', 'check', `非法 k=${k}：必须是 1 到 ${input.length} 之间的整数`, {}, errResult);
+    return { steps, result: errResult, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+  }
 
-    while (fastId !== null) {
-        const fnd = nodes.find(x => x.id === fastId);
-        const snd = nodes.find(x => x.id === slowId);
-        fastId = fnd.next;
-        slowId = snd.next;
-        steps.push({
-            event: "move_both",
-            variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId, fastId, slowId }
-        });
-    }
+  let fastId = headId;
+  let slowId = headId;
+  for (let s = 0; s < k; s++) {
+    const nd = nodes.find((x) => x.id === fastId);
+    fastId = nd.next;
+  }
+  record(
+    'fast_forward',
+    'fast-forward',
+    `快指针先走 ${k} 步：fast=${fastId === null ? 'NULL' : fastId}，slow=${slowId}`,
+    { fastId, slowId }
+  );
 
-    const targetNode = nodes.find(x => x.id === slowId);
-    const okResult = { nodeId: targetNode.id, value: targetNode.value };
-    steps.push({
-        event: "done",
-        variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId, fastId, slowId },
-        result: okResult
-    });
+  while (fastId !== null) {
+    const fnd = nodes.find((x) => x.id === fastId);
+    const snd = nodes.find((x) => x.id === slowId);
+    fastId = fnd.next;
+    slowId = snd.next;
+    record(
+      'move_both',
+      'move-both',
+      `快慢指针同步后移：fast=${fastId === null ? 'NULL' : fastId}，slow=${slowId === null ? 'NULL' : slowId}`,
+      { fastId, slowId }
+    );
+  }
 
-    return { steps, result: okResult, sourceVersion, sourceLines };
+  const targetNode = nodes.find((x) => x.id === slowId);
+  const okResult = { nodeId: targetNode.id, value: targetNode.value };
+  record(
+    'done',
+    'done',
+    `找到倒数第 ${k} 个节点：id=${targetNode.id}, value=${targetNode.value}`,
+    { fastId, slowId },
+    okResult
+  );
+  return { steps, result: { nodeId: targetNode.id, value: targetNode.value }, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
 }
-
