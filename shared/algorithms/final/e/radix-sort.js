@@ -3,7 +3,7 @@ const SOURCE_VERSION = 'radix-sort-c-v1';
 const SOURCE_LINES = [
   { lineId: 'init', text: 'void radix_sort(int arr[], int n) {' },
   { lineId: 'find-max', text: '  int maxv = arr[0];' },
-  { lineId: 'scan-max', text: '  for(int i=0;i<n;i++) maxv = max(maxv, arr[i]);' },
+  { lineId: 'scan-max', text: '  for(int i=0;i<n;i++) if(arr[i] > maxv) maxv = arr[i];' },
   { lineId: 'digit-loop', text: '  for(int exp = 1; maxv / exp > 0; exp *= 10) {' },
   { lineId: 'count-init', text: '    int cnt[10] = {0};' },
   { lineId: 'count-digit', text: '    for(int i=0;i<n;i++) cnt[(arr[i]/exp)%10]++;' },
