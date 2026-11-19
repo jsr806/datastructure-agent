@@ -1,85 +1,103 @@
-// singly-linked-list-insert.js
-const sourceVersion = "e-package-v3-fix";
-const sourceLines = "1-120";
+// shared/algorithms/final/e/singly-linked-list-insert.js
+const SOURCE_VERSION = 'singly-linked-list-insert-c-v1';
+const NO_RESULT = Symbol('no-result');
 
+const SOURCE_LINES = [
+  { lineId: 'struct', text: 'struct Node { int value; Node* next; };' },
+  { lineId: 'init', text: 'Node* list_insert(Node* head, int pos, int value) {' },
+  { lineId: 'check', text: '  if(pos < 0) return head;   /* pos 必须是非负整数，且不超过表长 */' },
+  { lineId: 'create', text: '  Node* newNode = new Node(); newNode->value = value; newNode->next = NULL;' },
+  { lineId: 'link-head', text: '  if(pos == 0){ newNode->next = head; return newNode; }' },
+  { lineId: 'find-prev', text: '  Node* prev = head; for(int i=0;i<pos-1;i++){ if(prev == NULL) return head; prev = prev->next; }' },
+  { lineId: 'link-mid', text: '  if(prev == NULL) return head; newNode->next = prev->next; prev->next = newNode;' },
+  { lineId: 'done', text: '  return head;' },
+  { lineId: 'close', text: '}' },
+];
+
+/**
+ * 单链表插入：单次运行周期内节点 ID 稳定、绝不重分配/复用；输出值序列由 headId 顺 next 遍历产生
+ * @param {{list:number[],pos:number,value:number}} input
+ * @returns {{steps:any[],result:number[]|null,sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
+ */
 export function generateSinglyLinkedInsertSteps({ list, pos, value }) {
-    const steps = [];
-    let nextAutoId = 0;
+  const steps = [];
+  const input = Array.isArray(list) ? [...list] : [];
+  let nextAutoId = 0;
+  let nodes = input.map((v) => ({ id: nextAutoId++, value: v, next: null }));
+  for (let i = 0; i < nodes.length - 1; i++) {
+    nodes[i].next = nodes[i + 1].id;
+  }
+  let headId = nodes.length ? nodes[0].id : null;
+  const clone = (o) => JSON.parse(JSON.stringify(o));
 
-    let nodes = list.map(v => ({ id: nextAutoId++, value: v, next: null }));
-    for (let i = 0; i < nodes.length - 1; i++) {
-        nodes[i].next = nodes[i + 1].id;
-    }
-    let headId = nodes[0].id;
-
+  function record(event, lineId, description, vars = {}, finalResult = NO_RESULT) {
+    const done = finalResult !== NO_RESULT;
+    const nodesSnap = clone(nodes);
     steps.push({
-        event: "init",
-        variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId }
+      schemaVersion: '1.0',
+      algorithm: 'singly-linked-list-insert',
+      stepIndex: steps.length,
+      sourceVersion: SOURCE_VERSION,
+      event,
+      lineId,
+      nodes: nodesSnap,
+      variables: { nodes: nodesSnap, headId, ...clone(vars) },
+      description,
+      done,
+      result: done ? clone(finalResult) : null,
     });
+  }
 
-    if (pos < 0 || pos > list.length) {
-        steps.push({
-            event: "error",
-            variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId },
-            result: null
-        });
-        return { steps, result: null, sourceVersion, sourceLines };
+  const collectByHead = () => {
+    const arr = [];
+    let cid = headId;
+    while (cid !== null) {
+      const nd = nodes.find((x) => x.id === cid);
+      if (!nd) break;
+      arr.push(nd.value);
+      cid = nd.next;
     }
+    return arr;
+  };
 
-    const newNodeId = nextAutoId++;
-    const newNode = { id: newNodeId, value, next: null };
-    nodes.push(newNode);
+  record('init', 'init', `原始链表 [${input.join(',')}]，在下标 ${pos} 处插入 ${value}`);
 
-    steps.push({
-        event: "create_node",
-        variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId },
-        comment: `创建新节点 id=${newNodeId}, value=${value}`
-    });
+  if (!Number.isInteger(pos) || pos < 0 || pos > input.length) {
+    record('error', 'check', `非法位置 pos=${pos}：必须是 0 到 ${input.length} 之间的整数`, {}, null);
+    return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+  }
 
-    if (pos === 0) {
-        newNode.next = headId;
-        headId = newNodeId;
-        steps.push({
-            event: "link_head_insert",
-            variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId }
-        });
-    } else {
-        let currId = headId;
-        let currNode = nodes.find(n => n.id === currId);
-        for (let i = 0; i < pos - 1; i++) {
-            currId = currNode.next;
-            currNode = nodes.find(n => n.id === currId);
-        }
-        newNode.next = currNode.next;
-        currNode.next = newNodeId;
-        steps.push({
-            event: "link_mid_insert",
-            variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId }
-        });
+  const newNodeId = nextAutoId++;
+  nodes.push({ id: newNodeId, value, next: null });
+  record('create_node', 'create', `新建节点 id=${newNodeId}, value=${value}（该 id 全局不再复用）`);
+
+  if (pos === 0) {
+    const oldHeadId = headId;
+    nodes.find((n) => n.id === newNodeId).next = oldHeadId;
+    headId = newNodeId;
+    record(
+      'link_head_insert',
+      'link-head',
+      `头插：新节点 ${newNodeId} 的 next 指向原头节点 ${oldHeadId === null ? 'NULL' : oldHeadId}`
+    );
+  } else {
+    let currId = headId;
+    for (let i = 0; i < pos - 1; i++) {
+      const cn = nodes.find((n) => n.id === currId);
+      currId = cn.next;
     }
+    const currNode = nodes.find((n) => n.id === currId);
+    const newNode = nodes.find((n) => n.id === newNodeId);
+    newNode.next = currNode.next;
+    currNode.next = newNodeId;
+    record(
+      'link_mid_insert',
+      'link-mid',
+      `在节点 ${currId} 之后插入新节点 ${newNodeId}，只修改 next 指针，节点 id 全程不变`
+    );
+  }
 
-    const collectByHead = () => {
-        const arr = [];
-        let cid = headId;
-        while (cid !== null) {
-            const nd = nodes.find(x => x.id === cid);
-            arr.push(nd.value);
-            cid = nd.next;
-        }
-        return arr;
-    };
-    const finalResult = collectByHead();
-
-    steps.push({
-        event: "done",
-        variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId },
-        result: finalResult
-    });
-
-    return {
-        steps,
-        result: finalResult,
-        sourceVersion,
-        sourceLines
-    };
+  const finalResult = collectByHead();
+  record('done', 'done', `插入完成，链表从 headId=${headId} 遍历得到 [${finalResult.join(',')}]`, {}, finalResult);
+  return { steps, result: collectByHead(), sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
 }
