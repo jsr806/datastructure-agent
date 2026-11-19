@@ -1,77 +1,85 @@
-// shared/algorithms/final/e/singly-linked-list-insert.js
-const SOURCE_VERSION = 'singly-linked-insert-c-v1';
-const SOURCE_LINES = [
-  { lineId: 'init', text: 'int list_insert(ListNode* &head, int pos, int val) {' },
-  { lineId: 'check-pos', text: '  if(pos<0) return -1;' },
-  { lineId: 'create-node', text: '  ListNode *p=new ListNode(val);' },
-  { lineId: 'insert-head', text: '  if(pos==0){ p->next=head; head=p; return 0; }' },
-  { lineId: 'find-pre', text: '  ListNode *cur=head; for(int i=0;i<pos-1;i++){ if(!cur) return -1; cur=cur->next; }' },
-  { lineId: 'link', text: '  p->next = cur->next; cur->next = p; return 0;' },
-  { lineId: 'done', text: '}' },
-];
+// singly-linked-list-insert.js
+const sourceVersion = "e-package-v3-fix";
+const sourceLines = "1-120";
 
-/**
- * 单链表插入 二次复审修复版
- * @param {{list:number[],pos:number,value:number}} input
- * @returns {{steps:any[],result:number[]|null,sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
- */
-export function generateSinglyLinkedInsertSteps(input) {
-  const { list, pos, value } = input;
-  const steps = [];
-  let nodes = list.map((v,id)=>({id,value:v,next:id+1<list.length?id+1:null}));
+export function generateSinglyLinkedInsertSteps({ list, pos, value }) {
+    const steps = [];
+    let nextAutoId = 0;
 
-  function record(event, lineId, description, extraVars={}){
-    const done = event==='sorted'||event==='error';
-    const snapNodes = JSON.parse(JSON.stringify(nodes));
-    steps.push({
-      schemaVersion:'1.0',
-      algorithm:'singly-linked-list-insert',
-      stepIndex:steps.length,
-      sourceVersion:SOURCE_VERSION,
-      event,
-      lineId,
-      array: snapNodes.map(x=>x.value),
-      variables:{ nodes:snapNodes, pos, value, ...extraVars },
-      description,
-      done,
-      result: done ? (event === 'error' ? null : JSON.parse(JSON.stringify(snapNodes.map(x=>x.value)))) : null
-    });
-  }
-
-  record('init','init',`原始链表 [${list.join(',')}]，pos=${pos}插入值${value}`);
-
-  if(!Number.isInteger(pos) || pos < 0){
-    record('error','check-pos',`pos=${pos}非法，必须非负整数`);
-    return {steps,result:null,sourceVersion:SOURCE_VERSION,sourceLines:SOURCE_LINES};
-  }
-  if(pos > nodes.length){
-    record('error','check-pos',`pos=${pos}超过链表长度${nodes.length}`);
-    return {steps,result:null,sourceVersion:SOURCE_VERSION,sourceLines:SOURCE_LINES};
-  }
-
-  const newId = nodes.length;
-  record('create-node','create-node',`新建节点 id=${newId}, value=${value}`);
-  if(pos === 0){
-    nodes.unshift({id:newId,value,next:0});
-    for(let i=0;i<nodes.length;i++) nodes[i].id = i;
-    for(let i=0;i<nodes.length-1;i++) nodes[i].next = i+1;
-    nodes[nodes.length-1].next = null;
-    record('insert-head','insert-head','头插完成');
-  }else{
-    let curId = 0;
-    for(let i=0;i<pos-1;i++){
-      record('find-pre','find-pre',`寻找前驱节点 i=${i}, curId=${curId}`);
-      curId = nodes[curId].next;
+    let nodes = list.map(v => ({ id: nextAutoId++, value: v, next: null }));
+    for (let i = 0; i < nodes.length - 1; i++) {
+        nodes[i].next = nodes[i + 1].id;
     }
-    const oldNext = nodes[curId].next;
-    nodes.splice(curId+1,0,{id:newId,value,next:oldNext});
-    for(let i=0;i<nodes.length;i++) nodes[i].id=i;
-    for(let i=0;i<nodes.length-1;i++) nodes[i].next = i+1;
-    nodes[nodes.length-1].next = null;
-    record('link','link',`在curId=${curId}后插入新节点`);
-  }
+    let headId = nodes[0].id;
 
-  record('sorted','done',`插入完成，链表：[${nodes.map(x=>x.value).join(',')}]`);
-  return {steps, result: nodes.map(x=>x.value), sourceVersion:SOURCE_VERSION, sourceLines:SOURCE_LINES};
+    steps.push({
+        event: "init",
+        variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId }
+    });
+
+    if (pos < 0 || pos > list.length) {
+        steps.push({
+            event: "error",
+            variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId },
+            result: null
+        });
+        return { steps, result: null, sourceVersion, sourceLines };
+    }
+
+    const newNodeId = nextAutoId++;
+    const newNode = { id: newNodeId, value, next: null };
+    nodes.push(newNode);
+
+    steps.push({
+        event: "create_node",
+        variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId },
+        comment: `创建新节点 id=${newNodeId}, value=${value}`
+    });
+
+    if (pos === 0) {
+        newNode.next = headId;
+        headId = newNodeId;
+        steps.push({
+            event: "link_head_insert",
+            variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId }
+        });
+    } else {
+        let currId = headId;
+        let currNode = nodes.find(n => n.id === currId);
+        for (let i = 0; i < pos - 1; i++) {
+            currId = currNode.next;
+            currNode = nodes.find(n => n.id === currId);
+        }
+        newNode.next = currNode.next;
+        currNode.next = newNodeId;
+        steps.push({
+            event: "link_mid_insert",
+            variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId }
+        });
+    }
+
+    const collectByHead = () => {
+        const arr = [];
+        let cid = headId;
+        while (cid !== null) {
+            const nd = nodes.find(x => x.id === cid);
+            arr.push(nd.value);
+            cid = nd.next;
+        }
+        return arr;
+    };
+    const finalResult = collectByHead();
+
+    steps.push({
+        event: "done",
+        variables: { nodes: JSON.parse(JSON.stringify(nodes)), headId },
+        result: finalResult
+    });
+
+    return {
+        steps,
+        result: finalResult,
+        sourceVersion,
+        sourceLines
+    };
 }
-
