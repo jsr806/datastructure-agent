@@ -1,111 +1,78 @@
-// shared/algorithms/final/e/counting-sort.js
-const SOURCE_VERSION = 'counting-sort-c-v1';
-const SOURCE_LINES = [
-  { lineId: 'init', text: 'void counting_sort(int arr[], int n) {' },
-  { lineId: 'find-minmax', text: '  int minv = arr[0], maxv = arr[0];' },
-  { lineId: 'scan-minmax', text: '  for(int i=0;i<n;i++){ minv=min(minv,arr[i]); maxv=max(maxv,arr[i]); }' },
-  { lineId: 'alloc-count', text: '  int range = maxv - minv + 1; int* cnt = new int[range]; memset(cnt,0,sizeof(int)*range);' },
-  { lineId: 'count-loop', text: '  for(int i=0;i<n;i++) cnt[arr[i]-minv]++;' },
-  { lineId: 'prefix-loop', text: '  for(int i=1;i<range;i++) cnt[i] += cnt[i-1];' },
-  { lineId: 'fill-ans', text: '  int* tmp = new int[n]; for(int i=n-1;i>=0;i--)' },
-  { lineId: 'place-item', text: '    tmp[--cnt[arr[i]-minv]] = arr[i];' },
-  { lineId: 'copy-back', text: '  for(int i=0;i<n;i++) arr[i]=tmp[i];' },
-  { lineId: 'free', text: '  delete[] cnt; delete[] tmp;' },
-  { lineId: 'done', text: '}' },
-];
+// counting-sort.js
+const sourceVersion = "e-package-v3-fix";
+const sourceLines = "1-140";
 
-/**
- * 计数排序（二次复审修复：校验提前 + result契约对齐）
- * @param {{list: number[]}} input
- * @returns {{steps:any[],result:number[]|null,sourceVersion:string,sourceLines:typeof SOURCE_LINES}}
- */
-export function generateCountingSortSteps(input) {
-  const { list } = input;
-  const steps = [];
-  const arr = JSON.parse(JSON.stringify(list));
-  const n = arr.length;
+export function generateCountingSortSteps({ list }) {
+    const steps = [];
+    const input = [...list];
+    steps.push({ event: "init", variables: { input } });
 
-  function record(event, lineId, description, extraVars = {}) {
-    const done = event === 'sorted' || event === 'error';
-    const arrSnap = JSON.parse(JSON.stringify(arr));
+    for (const num of input) {
+        if (!Number.isInteger(num)) {
+            steps.push({ event: "error", result: null });
+            return { steps, result: null, sourceVersion, sourceLines };
+        }
+    }
+
+    if (input.length === 0) {
+        steps.push({ event: "done", result: [] });
+        return { steps, result: [], sourceVersion, sourceLines };
+    }
+
+    const min = Math.min(...input);
+    const max = Math.max(...input);
+    let count = new Array(max - min + 1).fill(0);
+    steps.push({ event: "count_init", variables: { min, max } });
+
+    // 频次统计
+    for (const val of input) {
+        const idx = val - min;
+        const old = count[idx];
+        count[idx] += 1;
+        steps.push({
+            event: "count_inc",
+            variables: { countDiff: { index: idx, old, new: count[idx] }, min, max },
+            comment: `统计数值 ${val} 频次`
+        });
+    }
+
+    // 前缀和，使用countDiff增量，不保存完整数组快照
+    for (let i = 1; i < count.length; i++) {
+        const oldVal = count[i];
+        count[i] = count[i] + count[i - 1];
+        steps.push({
+            event: "prefix_sum",
+            variables: { countDiff: { index: i, old: oldVal, new: count[i] }, min, max },
+            comment: `前缀计算下标 ${i + min}`
+        });
+    }
+
+    // 回填结果
+    const output = new Array(input.length).fill(null);
+    // 反向遍历保证稳定性
+    for (let p = input.length - 1; p >= 0; p--) {
+        const val = input[p];
+        const cIdx = val - min;
+        const pos = count[cIdx] - 1;
+        output[pos] = val;
+        const oldCnt = count[cIdx];
+        count[cIdx] -= 1;
+        steps.push({
+            event: "place_output",
+            variables: {
+                output: [...output],
+                countDiff: { index: cIdx, old: oldCnt, new: count[cIdx] },
+                min, max
+            },
+            comment: `放置 ${val} 到输出[${pos}]`
+        });
+    }
+
     steps.push({
-      schemaVersion: '1.0',
-      algorithm: 'counting-sort',
-      stepIndex: steps.length,
-      sourceVersion: SOURCE_VERSION,
-      event,
-      lineId,
-      array: arrSnap,
-      variables: {
-        arr: arrSnap,
-        n,
-        ...extraVars,
-      },
-      description,
-      done,
-      result: done ? (event === 'error' ? null : JSON.parse(JSON.stringify(arrSnap))) : null,
+        event: "done",
+        variables: { output },
+        result: output
     });
-  }
 
-  record('init', 'init', `待排序数组 [${arr.join(',')}]，开始稳定计数排序`);
-
-  //【二次复审】校验放到n<=1提前返回之前
-  if (!arr.every(x => Number.isInteger(x))) {
-    record('error', 'alloc-count', '存在非整数元素，计数排序终止');
-    return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
-  }
-
-  if (n <= 1) {
-    record('sorted', 'done', `数组长度${n}，无需排序：[${arr.join(',')}]`);
-    return { steps, result: [...arr], sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
-  }
-
-  let minv = arr[0];
-  let maxv = arr[0];
-  record('find-minmax', 'find-minmax', `初始化 min=${minv}, max=${maxv}`, { minv, maxv });
-  for (let i = 0; i < n; i++) {
-    minv = Math.min(minv, arr[i]);
-    maxv = Math.max(maxv, arr[i]);
-  }
-  record('scan-minmax', 'scan-minmax', `扫描完成，min=${minv}, max=${maxv}` , { minv, maxv });
-
-  const range = maxv - minv + 1;
-  const MAX_RANGE = 5000;
-
-  if (range > MAX_RANGE) {
-    record('error','alloc-count',`值域跨度${range}超过最大允许${MAX_RANGE}，终止`);
-    return { steps, result: null, sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
-  }
-
-  const cnt = new Array(range).fill(0);
-  record('alloc-count', 'alloc-count', `开辟计数数组，区间长度range=${range}，cnt初始全0`, { cnt:[...cnt], minv, maxv, range });
-
-  for (let i = 0; i < n; i++) {
-    const idx = arr[i] - minv;
-    cnt[idx] += 1;
-    record('count-loop', 'count-loop', `统计 arr[${i}]=${arr[i]}，cnt[${idx}]++`, { cnt:[...cnt] });
-  }
-
-  for (let i = 1; i < range; i++) {
-    cnt[i] += cnt[i - 1];
-    record('prefix-loop', 'prefix-loop', `计算前缀和 cnt[${i}] += cnt[${i-1}]`, { cnt:[...cnt] });
-  }
-
-  const tmp = new Array(n);
-  record('fill-ans', 'fill-ans', `开辟临时数组tmp，从后向前放置元素保证稳定`, { cnt:[...cnt], tmp:[...tmp] });
-  for (let i = n - 1; i >= 0; i--) {
-    const idx = arr[i] - minv;
-    const pos = --cnt[idx];
-    tmp[pos] = arr[i];
-    record('place-item', 'place-item', `arr[${i}]=${arr[i]}，放到tmp[${pos}]`, { cnt:[...cnt], tmp:[...tmp] });
-  }
-
-  for (let i = 0; i < n; i++) {
-    arr[i] = tmp[i];
-  }
-  record('copy-back', 'copy-back', `将临时数组拷贝回原数组`);
-
-  record('sorted', 'done', `计数排序完成，结果：[${arr.join(',')}]`);
-  return { steps, result: [...arr], sourceVersion: SOURCE_VERSION, sourceLines: SOURCE_LINES };
+    return { steps, result: output, sourceVersion, sourceLines };
 }
-
