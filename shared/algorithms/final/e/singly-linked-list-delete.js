@@ -5,10 +5,10 @@ const NO_RESULT = Symbol('no-result');
 const SOURCE_LINES = [
   { lineId: 'struct', text: 'struct Node { int value; Node* next; };' },
   { lineId: 'init', text: 'Node* list_delete(Node* head, int pos) {' },
-  { lineId: 'check', text: '  if(pos < 0 || head == NULL) return head;   /* pos 必须是非负整数且在表内 */' },
+  { lineId: 'check', text: '  if(pos < 0 || head == 0) return head;   /* pos 必须是非负整数且在表内 */' },
   { lineId: 'delete-head', text: '  if(pos == 0){ Node* d = head; head = head->next; delete d; return head; }' },
-  { lineId: 'find-prev', text: '  Node* prev = head; for(int i=0;i<pos-1;i++){ if(prev == NULL) return head; prev = prev->next; }' },
-  { lineId: 'delete-mid', text: '  if(prev == NULL || prev->next == NULL) return head; Node* d = prev->next; prev->next = d->next; delete d;' },
+  { lineId: 'find-prev', text: '  Node* prev = head; for(int i=0;i<pos-1;i++){ if(prev == 0) return head; prev = prev->next; }' },
+  { lineId: 'delete-mid', text: '  if(prev == 0 || prev->next == 0) return head; Node* d = prev->next; prev->next = d->next; delete d;' },
   { lineId: 'done', text: '  return head;' },
   { lineId: 'close', text: '}' },
 ];
@@ -73,7 +73,7 @@ export function generateSinglyLinkedListDeleteSteps({ list, pos }) {
     record(
       'delete_head',
       'delete-head',
-      `删除头节点 ${oldHeadId}（该 id 永久废弃不复用），新头节点 ${headId === null ? 'NULL' : headId}`
+      `删除头节点 ${oldHeadId}（该 id 永久废弃不复用），新头节点 ${headId === null ? '0' : headId}`
     );
   } else {
     let prevId = headId;
@@ -87,7 +87,7 @@ export function generateSinglyLinkedListDeleteSteps({ list, pos }) {
     record(
       'delete_mid',
       'delete-mid',
-      `删除节点 ${delId}（该 id 永久废弃不复用），前驱 ${prevId} 的 next 改为 ${delNd.next === null ? 'NULL' : delNd.next}`
+      `删除节点 ${delId}（该 id 永久废弃不复用），前驱 ${prevId} 的 next 改为 ${delNd.next === null ? '0' : delNd.next}`
     );
   }
 
